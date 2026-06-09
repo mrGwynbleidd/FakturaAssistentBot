@@ -1,0 +1,1580 @@
+05-06-26
+1. Собрать все PDF в data/pdf/.
+2. Создать FAQ PDF по проблемам входа, пароля, ЭЦП и доступа.
+3. Обновить prompt в generator.py.
+4. Подключить query_rewriter.py в retriever.py.
+5. Пересобрать индекс и протестировать 20 вопросов.
+
+
+Отлично. Сейчас **не подключаем Telegram-группу**. Делаем сначала “мозг бота” локально:
+
+```text
+вопрос пользователя
+   ↓
+определение языка
+   ↓
+поиск по PDF/Chroma
+   ↓
+Gemini генерирует ответ
+   ↓
+сохранение вопроса и ответа в CSV
+   ↓
+ответ выводится в терминале
+```
+
+То есть мы создаём **ядро бота**, которое потом легко подключим к Telegram.
+
+---
+
+# Шаг 1. Текущая структура проекта
+
+У тебя должно быть примерно так:
+
+```text
+faktura_bot/
+│
+├── app/
+│   ├── bot/
+│   │   └── language.py
+│   │
+│   ├── core/
+│   │   └── bot_engine.py
+│   │
+│   ├── logs/
+│   │   └── csv_logger.py
+│   │
+│   ├── rag/
+│   │   ├── pdf_loader.py
+│   │   ├── splitter.py
+│   │   ├── embedding.py
+│   │   ├── index_builder.py
+│   │   ├── query_rewriter.py
+│   │   ├── retriever.py
+│   │   └── generator.py
+│   │
+│   └── config.py
+│
+├── data/
+│   ├── pdf/
+│   ├── chroma_db/
+│   └── raw/
+│       └── QA_outputs.csv
+│
+├── build_index.py
+├── test_bot_engine.py
+├── .env
+└── requirements.txt
+```
+
+Теперь у нас есть нормальное ядро:
+
+```text
+test_bot_engine.py
+        ↓
+process_user_question()
+        ↓
+detect_language()
+        ↓
+retrieve_context()
+        ↓
+rewrite_query()
+        ↓
+Chroma search
+        ↓
+generate_answer()
+        ↓
+Gemini API
+        ↓
+save_qa()
+        ↓
+CSV log
+```
+
+
+вопрос пользователя
+   ↓
+бот не нашёл хороший ответ
+   ↓
+вопрос сохраняется как problem case
+   ↓
+админ потом пишет правильный ответ
+   ↓
+этот ответ сохраняется в базу обучения
+   ↓
+после подтверждения он добавляется в knowledge base
+   ↓
+пересоздаём embeddings
+   ↓
+в следующий раз бот уже отвечает лучше
+```
+
+PDF + approved cases → Chroma → Gemini → ответ
+                         ↑
+                         |
+        user question + admin answer + review
+```
+
+### Do not save question in needs_review
+add faktura API https://api.faktura.uz/docs/
+Create tg-bot
+take questions from needs_review auto, after review auto embedding 
+interface for user and admin. Learn from real-user question and admins answer
+https://t.me/fakturauz Assume, sometimes admins do not write it, sometimes very short
+check cyrillic uzbek!!!
+Photo embedding, understand photo and able to understand question from photo and mb little text from user 
+
+###Need tg-bot that will kick and report mailing, ad bots, deleate process_user_question
+Need dataset with keywords, and ability to detect it other languages
+
+
+###learn git 
+
+
+###agent, show cursor
+
+
+!!!!!!!!!!!
+
+Читаю файлы бота:Нашёл все баги. Их три, объясняю:
+
+**Баг 1 — `keyboards.py`:** кнопка English в `language_keyboard` называется `"🇬🇧 English"`, а в `handlers.py` хэндлер слушает `"🇬🇧/🇺🇸 English"` — текст не совпадает, хэндлер никогда не срабатывает.
+
+**Баг 2 — `keyboards.py`:** в `main_menu_keyboard` для `"ru"` нет кнопки `"🔄 Перезапустить"` — она есть только для `uz` и `en`. Из-за этого у русскоязычного меню структура разная.
+
+**Баг 3 — `handlers.py`:** в `restart_handler` написано `get_text("restart", "language")` — передана строка `"language"` вместо переменной `language`. Перезапуск всегда ломается.
+
+Вот исправленные файлы:
+
+**`app/bot/keyboards.py`:**
+
+```python
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+
+
+def main_menu_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
+
+    if language == "uz":
+        keyboard = [
+            [
+                KeyboardButton(text="❓ Savol berish"),
+                KeyboardButton(text="🌐 Tilni tanlash"),
+            ],
+            [
+                KeyboardButton(text="📚 Bot imkoniyatlari"),
+                KeyboardButton(text="🆘 Yordam"),
+            ],
+            [
+                KeyboardButton(text="🔄 Qayta boshlash"),
+            ],
+        ]
+        placeholder = "Faktura.uz bo'yicha savolingizni yozing..."
+
+    elif language == "en":
+        keyboard = [
+            [
+                KeyboardButton(text="❓ Ask a question"),
+                KeyboardButton(text="🌐 Choose language"),
+            ],
+            [
+                KeyboardButton(text="📚 Bot features"),
+                KeyboardButton(text="🆘 Support"),
+            ],
+            [
+                KeyboardButton(text="🔄 Restart"),
+            ],
+        ]
+        placeholder = "Write your question about Faktura.uz..."
+
+    else:  # ru
+        keyboard = [
+            [
+                KeyboardButton(text="❓ Задать вопрос"),
+                KeyboardButton(text="🌐 Выбрать язык"),
+            ],
+            [
+                KeyboardButton(text="📚 Возможности бота"),
+                KeyboardButton(text="🆘 Поддержка"),
+            ],
+            [
+                KeyboardButton(text="🔄 Перезапустить"),
+            ],
+        ]
+        placeholder = "Напишите ваш вопрос по Faktura.uz..."
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+        input_field_placeholder=placeholder,
+    )
+
+
+def language_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
+
+    if language == "uz":
+        back_text = "⬅️ Orqaga"
+    elif language == "en":
+        back_text = "⬅️ Back"
+    else:
+        back_text = "⬅️ Назад"
+
+    keyboard = [
+        [
+            KeyboardButton(text="🇷🇺 Русский"),
+            KeyboardButton(text="🇺🇿 O'zbekcha"),
+            KeyboardButton(text="🇬🇧 English"),  # БЫЛ "🇬🇧/🇺🇸 English" — не совпадало с хэндлером
+        ],
+        [
+            KeyboardButton(text=back_text),
+        ],
+    ]
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+    )
+```
+
+**`app/bot/handlers.py`** — исправлены все тексты кнопок и баг с `restart`:
+
+```python
+from aiogram import Router, F
+from aiogram.types import Message
+from aiogram.filters import CommandStart, Command
+import asyncio
+
+from aiogram.exceptions import TelegramBadRequest
+from aiogram.utils.chat_action import ChatActionSender
+
+from app.core.bot_engine import process_user_question
+from app.bot.keyboards import main_menu_keyboard, language_keyboard
+from app.bot.texts import get_text
+
+router = Router()
+
+USER_LANGUAGES: dict[int, str] = {}
+
+
+def get_user_language(user_id: int) -> str:
+    return USER_LANGUAGES.get(user_id, "ru")
+
+
+async def delete_msg_safely(msg: Message) -> None:
+    try:
+        await msg.delete()
+    except TelegramBadRequest:
+        pass
+
+
+async def send_main_menu(message: Message, language: str) -> None:
+    await message.answer(
+        get_text("start", language),
+        reply_markup=main_menu_keyboard(language),
+    )
+
+
+# ── /start ────────────────────────────────────────────────────────────────────
+@router.message(CommandStart())
+async def start_handler(message: Message):
+    language = get_user_language(message.from_user.id)
+    await send_main_menu(message, language)
+
+
+# ── /restart ──────────────────────────────────────────────────────────────────
+@router.message(Command("restart"))
+async def restart_handler(msg: Message):
+    user_id = msg.from_user.id
+    USER_LANGUAGES.pop(user_id, None)
+    language = "ru"
+    await msg.answer(
+        get_text("restart", language),  # БАГ БЫЛ ЗДЕСЬ: передавалась строка "language"
+        reply_markup=main_menu_keyboard(language),
+    )
+
+
+# ── /help ─────────────────────────────────────────────────────────────────────
+@router.message(Command("help"))
+async def help_handler(msg: Message):
+    language = get_user_language(msg.from_user.id)
+    await msg.answer(get_text("features", language), reply_markup=main_menu_keyboard(language))
+
+
+# ── Главное меню — кнопки ─────────────────────────────────────────────────────
+@router.message(F.text.in_(["❓ Задать вопрос", "❓ Savol berish", "❓ Ask a question"]))
+async def ask_question_button(msg: Message):
+    language = get_user_language(msg.from_user.id)
+    await msg.answer(get_text("ask_question", language), reply_markup=main_menu_keyboard(language))
+
+
+@router.message(F.text.in_(["🌐 Выбрать язык", "🌐 Tilni tanlash", "🌐 Choose language"]))
+async def choose_language_button(msg: Message):
+    language = get_user_language(msg.from_user.id)
+    await msg.answer(get_text("choose_language", language), reply_markup=language_keyboard(language))
+
+
+@router.message(F.text.in_(["📚 Возможности бота", "📚 Bot imkoniyatlari", "📚 Bot features"]))
+async def features_handler(message: Message):
+    language = get_user_language(message.from_user.id)
+    await message.answer(get_text("features", language), reply_markup=main_menu_keyboard(language))
+
+
+@router.message(F.text.in_(["🆘 Поддержка", "🆘 Yordam", "🆘 Support"]))
+async def support_handler(message: Message):
+    language = get_user_language(message.from_user.id)
+    await message.answer(get_text("support", language), reply_markup=main_menu_keyboard(language))
+
+
+@router.message(F.text.in_(["🔄 Перезапустить", "🔄 Qayta boshlash", "🔄 Restart"]))
+async def restart_button_handler(msg: Message):
+    user_id = msg.from_user.id
+    USER_LANGUAGES.pop(user_id, None)
+    language = "ru"
+    await msg.answer(get_text("restart", language), reply_markup=main_menu_keyboard(language))
+
+
+# ── Выбор языка ───────────────────────────────────────────────────────────────
+@router.message(F.text == "🇷🇺 Русский")
+async def set_ru_language(msg: Message):
+    USER_LANGUAGES[msg.from_user.id] = "ru"
+    await msg.answer(get_text("language_set_ru", "ru"), reply_markup=main_menu_keyboard("ru"))
+
+
+@router.message(F.text == "🇺🇿 O'zbekcha")
+async def set_uz_language(msg: Message):
+    USER_LANGUAGES[msg.from_user.id] = "uz"
+    await msg.answer(get_text("language_set_uz", "uz"), reply_markup=main_menu_keyboard("uz"))
+
+
+@router.message(F.text == "🇬🇧 English")  # БАГ БЫЛ: "🇬🇧/🇺🇸 English" — не совпадало с keyboard
+async def set_en_language(msg: Message):
+    USER_LANGUAGES[msg.from_user.id] = "en"
+    await msg.answer(get_text("language_set_en", "en"), reply_markup=main_menu_keyboard("en"))
+
+
+# ── Кнопка Назад ─────────────────────────────────────────────────────────────
+@router.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga", "⬅️ Back"]))
+async def back_button(msg: Message):
+    language = get_user_language(msg.from_user.id)
+    await msg.answer(get_text("main_menu", language), reply_markup=main_menu_keyboard(language))
+
+
+# ── Вопрос пользователя ───────────────────────────────────────────────────────
+@router.message(F.text)
+async def question_handler(msg: Message):
+    user_id = msg.from_user.id
+    language = get_user_language(user_id)
+    question = msg.text.strip()
+
+    if not question:
+        await msg.answer(get_text("empty_question", language))
+        return
+
+    async with ChatActionSender.typing(bot=msg.bot, chat_id=msg.chat.id):
+        searching_msg = await msg.answer(get_text("searching", language))
+        result = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: process_user_question(question, forced_language=language),
+        )
+        await delete_msg_safely(searching_msg)
+
+    answer = result.get("answer", get_text("error_answer", language))
+    await msg.answer(answer, reply_markup=main_menu_keyboard(language))
+```
+
+---
+
+**Итого три исправления:**
+
+| # | Файл | Баг | Фикс |
+|---|---|---|---|
+| 1 | `keyboards.py` | Кнопка `"🇬🇧/🇺🇸 English"` — текст не совпадал с хэндлером | Заменено на `"🇬🇧 English"` везде |
+| 2 | `keyboards.py` | В русском меню не было кнопки `"🔄 Перезапустить"` | Добавлена |
+| 3 | `handlers.py` | `get_text("restart", "language")` — строка вместо переменной | Исправлено на `language` |
+
+После замены этих двух файлов всё должно работать. Также заметь — в `handlers.py` я объединил все кнопки меню в один файл аккуратно, убрал дублирование эмодзи-символов которые рендерились как `ð\x9f\x8c\x90` (это была проблема с кодировкой в Drive).
+
+!!!!!!!!!!
+
+Нашёл папку. Теперь читаю ключевые файлы — `app` папку и файлы Faktura API:Теперь читаю ключевые файлы — `generator.py`, `bot_engine.py` и `api_answer.py`:Отлично, теперь вижу всю картину. Проблема понятна — объясняю и даю фикс.
+
+---
+
+**Где именно баг:**
+
+В `api_answer.py` есть опечатка в regex — `r"\b\d{90\b}"` вместо `r"\b\d{9}\b"` — ИНН никогда не находится. И в `direct_formatter.py` функция `format_api_answer_direct` проверяет строку неправильно (`.islower()` возвращает `bool`, а не строку). Из-за этого прямой форматтер всегда возвращает `""`, и управление уходит в Gemini — но промпт там написан так, что модель иногда путается и думает, что запроса не было.
+
+**Решение** — убрать зависимость от Gemini для простых API-ответов и починить баги. Вот исправленные файлы:
+
+**`app/faktura_api/api_answer.py`** — исправлен regex:
+
+```python
+import re
+
+from app.faktura_api.endpoints import (
+    get_document_types,
+    get_document_creation_types,
+    check_company_exists,
+)
+from app.faktura_api.formatter import format_json_context
+
+
+def extract_inn(question: str) -> str | None:
+    """Ищет 9-значный ИНН в вопросе."""
+    match = re.search(r"\b\d{9}\b", question)  # БАГ БЫЛ ЗДЕСЬ: \d{90\b}
+    if match:
+        return match.group(0)
+    return None
+
+
+def get_api_context(question: str, intent: str) -> tuple[str, list[dict]]:
+
+    if intent == "get_document_types":
+        data = get_document_types()
+        context = format_json_context(data, title="Faktura API result: document types")
+        return context, [{"source": "Faktura API: GetDocumentTypes", "source_type": "api", "api_intent": "get_document_types"}]
+
+    if intent == "get_document_creation_types":
+        data = get_document_creation_types()
+        context = format_json_context(data, title="Faktura API result: document creation types")
+        return context, [{"source": "Faktura API: GetDocumentCreationTypes", "source_type": "api", "api_intent": "get_document_creation_types"}]
+
+    if intent == "check_company_exists":
+        inn = extract_inn(question)
+
+        if not inn:
+            context = "SOURCE: Faktura API\nTITLE: INN check\n\nRESULT:\nПользователь хочет проверить ИНН, но в вопросе не найден 9-значный ИНН.\nПопроси пользователя отправить ИНН в формате 9 цифр."
+            return context, [{"source": "Faktura API: CheckCompanyExist", "source_type": "api", "api_intent": "check_company_exists"}]
+
+        data = check_company_exists(inn)
+
+        context = f"""SOURCE: Faktura API
+TITLE: Company existence check
+
+API_METHOD:
+GET /Api/CheckCompanyExist/{inn}
+
+USER_INN:
+{inn}
+
+RAW_JSON_RESULT:
+{data}
+
+INTERPRETATION_RULE:
+Если RAW_JSON_RESULT равен true — компания зарегистрирована в Faktura.uz.
+Если RAW_JSON_RESULT равен false — компания не найдена или не зарегистрирована.
+Если RAW_JSON_RESULT является объектом JSON — объясни поля простым языком.""".strip()
+
+        return context, [{"source": f"Faktura API: CheckCompanyExist/{inn}", "source_type": "api", "api_intent": "check_company_exists", "inn": inn}]
+
+    return "", []
+```
+
+---
+
+**`app/faktura_api/direct_formatter.py`** — полностью переписан, убраны два бага:
+
+```python
+import json
+
+
+def extract_json_from_context(api_context: str):
+    """Извлекает JSON из строки контекста."""
+    if "RAW_JSON_RESULT:" in api_context:
+        json_part = api_context.split("RAW_JSON_RESULT:", 1)[1].strip()
+        json_part = json_part.split("INTERPRETATION_RULE:", 1)[0].strip()
+    elif "JSON:" in api_context:
+        json_part = api_context.split("JSON:", 1)[1].strip()
+    else:
+        return None
+
+    # Сначала проверяем bool как текст (Faktura возвращает true/false)
+    lowered = json_part.lower()
+    if lowered.startswith("true"):
+        return True
+    if lowered.startswith("false"):
+        return False
+
+    try:
+        return json.loads(json_part)
+    except Exception:
+        return None
+
+
+def format_document_types_from_context(api_context: str, language: str = "ru") -> str:
+    data = extract_json_from_context(api_context)
+
+    if not isinstance(data, list):
+        return ""
+
+    if language == "en":
+        lines = ["Available document types in Faktura:"]
+    elif language == "uz":
+        lines = ["Faktura tizimida mavjud hujjat turlari:"]
+    else:
+        lines = ["В Faktura доступны следующие типы документов:"]
+
+    for index, item in enumerate(data, start=1):
+        description = item.get("description", "Без названия")
+        code = item.get("code", "no_code")
+        item_id = item.get("id", "")
+        lines.append(f"{index}. {description} — code: {code}, id: {item_id}")
+
+    return "\n".join(lines)
+
+
+def format_company_check_from_context(api_context: str, language: str = "ru") -> str:
+    data = extract_json_from_context(api_context)
+
+    inn = ""
+    if "USER_INN:" in api_context:
+        inn = api_context.split("USER_INN:", 1)[1].split("\n", 1)[0].strip()
+
+    if data is True:
+        if language == "en":
+            return f"✅ Company with INN {inn} is registered in Faktura.uz."
+        if language == "uz":
+            return f"✅ {inn} INN raqamli kompaniya Faktura.uz tizimida ro'yxatdan o'tgan."
+        return f"✅ Компания с ИНН {inn} зарегистрирована в системе Faktura.uz."
+
+    if data is False:
+        if language == "en":
+            return f"❌ Company with INN {inn} was not found in Faktura.uz."
+        if language == "uz":
+            return f"❌ {inn} INN raqamli kompaniya Faktura.uz tizimida topilmadi."
+        return f"❌ Компания с ИНН {inn} не найдена в системе Faktura.uz."
+
+    if isinstance(data, dict):
+        pretty = json.dumps(data, ensure_ascii=False, indent=2)
+        if language == "en":
+            return f"Faktura API returned data for INN {inn}:\n\n{pretty}"
+        if language == "uz":
+            return f"Faktura API {inn} INN bo'yicha ma'lumot qaytardi:\n\n{pretty}"
+        return f"Faktura API вернул данные по ИНН {inn}:\n\n{pretty}"
+
+    return ""
+
+
+def format_api_answer_direct(
+    question: str,
+    api_context: str,
+    language: str = "ru",
+) -> str:
+    """
+    Пробует сформировать ответ БЕЗ Gemini, напрямую из контекста.
+    Возвращает "" если не получилось — тогда идёт запрос к Gemini.
+    """
+    # Определяем тип ответа по контексту
+    if "GetDocumentTypes" in api_context or "document types" in api_context.lower():
+        return format_document_types_from_context(api_context, language)
+
+    if "CheckCompanyExist" in api_context or "USER_INN:" in api_context:
+        return format_company_check_from_context(api_context, language)
+
+    return ""
+```
+
+---
+
+**Что изменилось и почему теперь работает:**
+
+| Проблема | Было | Стало |
+|---|---|---|
+| Regex для ИНН | `\d{90\b}` — никогда не матчит | `\d{9}` — правильно |
+| `format_api_answer_direct` | `.islower()` возвращает `bool` — условие всегда `False` | Проверяет содержимое строки через `in` |
+| `check_company_exists` — ответ `true/false` | Парсился после JSON — падал | Сначала проверяем текст `true/false`, потом `json.loads` |
+| Gemini для простых ответов | Путался, говорил "не могу выполнить" | Прямой форматтер отвечает без Gemini |
+
+
+Всё понятно. Вот план встройки:
+
+Схема работы:
+
+Пользователь отправляет фото
+↓
+handlers.py скачивает фото → base64
+↓
+bot_engine.py: process_user_image()
+↓
+Gemini Vision анализирует скриншот
+↓
+Извлекает текст ошибки / описание
+↓
+Передаёт в обычный RAG pipeline (retrieve_context → generate_answer)
+↓
+Ответ пользователю
+
+
+Три новых/изменённых файла:
+
+app/rag/image_analyzer.py — новый файл, анализ изображения через Gemini:
+
+import base64
+from google import genai
+from google.genai import types
+from app.config import GEMINI_API_KEY
+import time
+
+client = genai.Client(api_key=GEMINI_API_KEY)
+
+GEMINI_MODELS = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+]
+
+
+def analyze_screenshot(image_bytes: bytes, language: str = "ru") -> dict:
+    """
+    Принимает байты изображения.
+    Возвращает:
+      {
+        "extracted_text": "текст ошибки или описание",
+        "search_query":   "запрос для ChromaDB",
+        "description":    "краткое описание для пользователя",
+      }
+    """
+
+    prompt = f"""
+Ты — AI-ассистент службы поддержки Faktura.uz.
+Пользователь прислал скриншот. Проанализируй изображение.
+
+ЗАДАЧА:
+1. Найди и выпиши дословно любой текст ошибки, сообщения или уведомления на скриншоте.
+2. Если видишь форму, таблицу или интерфейс — опиши кратко что там происходит.
+3. Сформулируй поисковый запрос (1-2 предложения) для поиска в базе знаний Faktura.uz.
+
+ЯЗЫК ОТВЕТА: {language}
+
+ФОРМАТ ОТВЕТА (строго JSON):
+{{
+  "extracted_text": "дословный текст с экрана или описание проблемы",
+  "search_query": "краткий запрос для поиска в базе знаний",
+  "description": "одно предложение — что видно на скриншоте"
+}}
+
+Отвечай ТОЛЬКО валидным JSON без markdown-обёртки.
+"""
+
+    last_error = None
+
+    for model in GEMINI_MODELS:
+        for attempt in range(2):
+            try:
+                response = client.models.generate_content(
+                    model=model,
+                    contents=[
+                        types.Part.from_bytes(
+                            data=image_bytes,
+                            mime_type="image/jpeg",
+                        ),
+                        prompt,
+                    ],
+                )
+
+                import json
+                raw = response.text.strip()
+                # убираем ```json если вдруг Gemini добавил
+                raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+                result = json.loads(raw)
+
+                return {
+                    "extracted_text": result.get("extracted_text", ""),
+                    "search_query": result.get("search_query", ""),
+                    "description": result.get("description", ""),
+                }
+
+            except Exception as err:
+                last_error = err
+                print(f"[image_analyzer] model={model}, attempt={attempt + 1}, error={err}")
+                time.sleep(2)
+
+    # если все модели упали — возвращаем пустышку, pipeline продолжится
+    return {
+        "extracted_text": "",
+        "search_query": "",
+        "description": "",
+        "error": str(last_error),
+    }
+
+
+app/core/bot_engine.py — добавляем process_user_image() в конец файла:
+
+# ----------- Добавь в конец bot_engine.py -----------
+
+from app.rag.image_analyzer import analyze_screenshot
+
+
+def process_user_image(
+    image_bytes: bytes,
+    caption: str = "",
+    save_to_csv: bool = True,
+    save_review_cases: bool = True,
+    forced_language: str | None = None,
+) -> dict:
+    """
+    Обрабатывает скриншот от пользователя.
+    1. Gemini Vision извлекает текст/описание с изображения.
+    2. Результат идёт в обычный RAG pipeline.
+    """
+
+    language = forced_language or "ru"
+
+    # Шаг 1 — анализ изображения
+    try:
+        image_info = analyze_screenshot(image_bytes, language=language)
+    except Exception as error:
+        return {
+            "success": False,
+            "language": language,
+            "question": caption or "[изображение]",
+            "answer": f"Не удалось проанализировать изображение: {error}",
+            "sources": [],
+            "context": "",
+            "sent_to_review": False,
+            "review_case_id": None,
+            "review_reason": None,
+            "image_description": "",
+        }
+
+    extracted_text = image_info.get("extracted_text", "")
+    search_query = image_info.get("search_query", "")
+    description = image_info.get("description", "")
+
+    # Если Gemini вообще ничего не извлёк
+    if not extracted_text and not search_query:
+        no_text_answers = {
+            "ru": "Не смог распознать текст на изображении. Попробуйте описать проблему текстом.",
+            "uz": "Rasmdan matnni tanib bo'lmadi. Muammoni matn orqali tasvirlang.",
+            "en": "Could not extract text from the image. Please describe the issue in text.",
+        }
+        return {
+            "success": False,
+            "language": language,
+            "question": caption or "[изображение]",
+            "answer": no_text_answers.get(language, no_text_answers["ru"]),
+            "sources": [],
+            "context": "",
+            "sent_to_review": False,
+            "review_case_id": None,
+            "review_reason": None,
+            "image_description": description,
+        }
+
+    # Шаг 2 — строим вопрос из caption + извлечённого текста
+    if caption:
+        combined_question = f"{caption}\n\n[Текст со скриншота]: {extracted_text}"
+    else:
+        combined_question = extracted_text
+
+    # Шаг 3 — прогоняем через обычный RAG pipeline
+    rag_result = process_user_question(
+        question=search_query or combined_question,
+        save_to_csv=save_to_csv,
+        save_review_cases=save_review_cases,
+        forced_language=language,
+    )
+
+    # Добавляем описание скриншота к ответу
+    if description:
+        prefix_map = {
+            "ru": f"🖼 *На скриншоте:* {description}\n\n",
+            "uz": f"🖼 *Skrinshot:* {description}\n\n",
+            "en": f"🖼 *Screenshot:* {description}\n\n",
+        }
+        prefix = prefix_map.get(language, prefix_map["ru"])
+        rag_result["answer"] = prefix + rag_result["answer"]
+
+    rag_result["image_description"] = description
+    return rag_result
+
+
+app/bot/handlers.py — добавляем хэндлер фото в конец файла:
+
+# ----------- Добавь в конец handlers.py -----------
+
+from aiogram.types import PhotoSize
+from app.core.bot_engine import process_user_image
+
+
+@router.message(F.photo)
+async def photo_handler(msg: Message):
+    """Обрабатывает скриншоты и фотографии от пользователя."""
+
+    user_id = msg.from_user.id
+    language = get_user_language(user_id)
+
+    # Берём фото в наилучшем качестве (последний элемент = самый большой)
+    photo: PhotoSize = msg.photo[-1]
+    caption: str = msg.caption or ""
+
+    # Показываем "ищу..."
+    search_message = await msg.answer(
+        get_text("searching", language),
+        reply_markup=main_menu_keyboard(language),
+    )
+
+    try:
+        async with ChatActionSender.typing(bot=msg.bot, chat_id=msg.chat.id):
+
+            # Скачиваем фото в байты
+            file = await msg.bot.get_file(photo.file_id)
+            file_bytes = await msg.bot.download_file(file.file_path)
+            image_bytes: bytes = file_bytes.read()
+
+            # Запускаем обработку в отдельном потоке
+            result = await asyncio.to_thread(
+                process_user_image,
+                image_bytes,
+                caption,
+                True,
+                True,
+                language,
+            )
+
+    finally:
+        await delete_msg_safely(search_message)
+
+    answer = result.get("answer", get_text("error_answer", language))
+    sources = result.get("sources", [])
+    sent_to_review = result.get("sent_to_review")
+    review_case_id = result.get("review_case_id")
+
+    final_text = answer
+
+    if sources and isinstance(sources, list):
+        unique_sources: list[str] = []
+        for source_item in sources:
+            source_name = str(source_item.get("source", "unknown")) if isinstance(source_item, dict) else str(source_item)
+            if source_name not in unique_sources:
+                unique_sources.append(source_name)
+
+        sources_text = "\n".
+        join(f"— {s}" for s in unique_sources[:3])
+        final_text += f"\n\n{get_text('sources', language)}\n{sources_text}"
+
+    if sent_to_review:
+        final_text += f"\n\n{get_text('saved_review', language)} {review_case_id}"
+
+    await msg.answer(
+        final_text,
+        reply_markup=main_menu_keyboard(language),
+        parse_mode="Markdown",
+    )
+
+
+Итого что добавили:
+
+
+
+|Файл                       |Что сделали                                                  |
+|---------------------------|-------------------------------------------------------------|
+|`app/rag/image_analyzer.py`|Новый — Gemini Vision извлекает текст/ошибку со скриншота    |
+|`app/core/bot_engine.py`   |Новая функция process_user_image() — склеивает Vision + RAG|
+|`app/bot/handlers.py`      |Новый хэндлер @router.message(F.photo) — принимает фото    |
+
+Пользователь может теперь:
+
+ • Прислать скриншот без подписи — бот сам поймёт что на экране
+ • Прислать скриншот с подписью — например "вот ошибка при входе" — бот учтёт оба контекста
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Для твоего проекта (**Telegram Bot + ChromaDB + PDF + Faktura API**) я бы рекомендовал не OpenClaw, а **Ollama + Qwen3 8B**.
+
+Причина простая:
+
+```text
+Qwen3 8B
+✓ русский
+✓ узбекский
+✓ английский
+✓ хорошо работает с инструкциями
+✓ легко подключается к Python
+✓ бесплатно
+✓ без лимитов
+```
+
+---
+
+# Шаг 1. Проверить ноутбук
+
+Открой PowerShell:
+
+```powershell
+systeminfo
+```
+
+или:
+
+```powershell
+Get-ComputerInfo
+```
+
+Напиши мне:
+
+```text
+CPU:
+RAM:
+GPU:
+```
+
+Но примерно:
+
+### Если у тебя
+
+```text
+16 GB RAM
+```
+
+то запускаем:
+
+```text
+Qwen3:4b
+```
+
+---
+
+### Если
+
+```text
+32 GB RAM
+```
+
+то:
+
+```text
+Qwen3:8b
+```
+
+---
+
+### Если
+
+```text
+64 GB RAM
+```
+
+то:
+
+```text
+Qwen3:14b
+```
+
+---
+
+# Шаг 2. Установка Ollama
+
+Скачать:
+
+[Ollama Official Website](https://ollama.com/download?utm_source=chatgpt.com)
+
+Установить как обычную программу.
+
+---
+
+Проверить:
+
+```powershell
+ollama --version
+```
+
+Должно показать:
+
+```text
+ollama version ...
+```
+
+---
+
+# Шаг 3. Скачать модель
+
+Для начала рекомендую:
+
+```powershell
+ollama pull qwen3:4b
+```
+
+или
+
+```powershell
+ollama pull qwen3:8b
+```
+
+---
+
+Размер примерно:
+
+```text
+4b ≈ 2.5-3 ГБ
+8b ≈ 5-6 ГБ
+```
+
+---
+
+# Шаг 4. Проверить модель
+
+Запусти:
+
+```powershell
+ollama run qwen3:4b
+```
+
+Напиши:
+
+```text
+Как создать ТТН в Faktura?
+```
+
+Если отвечает — всё работает.
+
+Выход:
+
+```text
+/bye
+```
+
+---
+
+# Шаг 5. Установить библиотеку Python
+
+В проекте:
+
+```powershell
+pip install ollama
+```
+
+---
+
+# Шаг 6. Создать новый файл
+
+Создай:
+
+```text
+app/llm/ollama_client.py
+```
+
+---
+
+Код:
+
+```python
+from ollama import chat
+
+
+def ask_ollama(prompt: str) -> str:
+    response = chat(
+        model="qwen3:4b",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+    )
+
+    return response["message"]["content"]
+```
+
+---
+
+# Шаг 7. Проверка из Python
+
+Создай:
+
+```text
+test_ollama.py
+```
+
+Код:
+
+```python
+from app.llm.ollama_client import ask_ollama
+
+answer = ask_ollama(
+    "Что такое Faktura?"
+)
+
+print(answer)
+```
+
+Запуск:
+
+```powershell
+python test_ollama.py
+```
+
+---
+
+# Шаг 8. Заменяем Gemini
+
+Сейчас у тебя примерно есть:
+
+```python
+from app.llm.gemini_client import ask_gemini
+
+answer = ask_gemini(prompt)
+```
+
+Меняем на:
+
+```python
+from app.llm.ollama_client import ask_ollama
+
+answer = ask_ollama(prompt)
+```
+
+---
+
+# Шаг 9. Проверяем весь RAG
+
+Схема останется такой:
+
+```text
+Вопрос пользователя
+        ↓
+query_rewriter.py
+        ↓
+retriever.py
+        ↓
+ChromaDB
+        ↓
+контекст
+        ↓
+Ollama
+        ↓
+ответ
+```
+
+---
+
+# Шаг 10. Настройка качества
+
+Когда заработает:
+
+```powershell
+ollama pull qwen3:8b
+```
+
+и меняем:
+
+```python
+model="qwen3:4b"
+```
+
+на
+
+```python
+model="qwen3:8b"
+```
+
+Качество станет заметно лучше.
+
+---
+
+# Для твоего ноутбука
+
+Я бы начал именно так:
+
+```text
+Ollama
++
+Qwen3:4b
++
+ChromaDB
++
+Faktura API
+```
+
+Потому что:
+
+* ставится за 10 минут;
+* не требует сервер;
+* не требует токены Google;
+* позволяет проверить всю архитектуру локально;
+* потом легко переносится на сервер без изменения логики проекта.
+
+После установки пришли характеристики ноутбука (`CPU`, `RAM`, `GPU`), и я подскажу, какую максимальную модель ты сможешь комфортно запускать локально.
+
+
+
+
+Если ты переходишь с **Gemini → Ollama + Qwen**, то хорошая новость: **80-90% проекта менять не придется**.
+
+У тебя уже есть правильная архитектура:
+
+```text
+Telegram
+↓
+bot_engine.py
+↓
+retriever.py
+↓
+ChromaDB
+↓
+generator.py
+↓
+LLM
+```
+
+Меняется только последний блок:
+
+```text
+Gemini
+↓
+Qwen
+```
+
+---
+
+# Файл №1 (создать)
+
+## `app/llm/ollama_client.py`
+
+Создай новый файл:
+
+```python
+from ollama import chat
+
+
+def ask_ollama(prompt: str) -> str:
+    response = chat(
+        model="qwen3:4b",  # позже можно qwen3:8b
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+
+    return response["message"]["content"]
+```
+
+---
+
+# Файл №2
+
+## `app/llm/generator.py`
+
+Это главный файл.
+
+Сейчас там примерно:
+
+```python
+from app.llm.gemini_client import ask_gemini
+```
+
+Меняем на:
+
+```python
+from app.llm.ollama_client import ask_ollama
+```
+
+---
+
+Дальше ищем:
+
+```python
+answer = ask_gemini(prompt)
+```
+
+Меняем:
+
+```python
+answer = ask_ollama(prompt)
+```
+
+---
+
+Пример:
+
+Было:
+
+```python
+try:
+    answer = ask_gemini(prompt)
+except Exception as e:
+    ...
+```
+
+Стало:
+
+```python
+try:
+    answer = ask_ollama(prompt)
+except Exception as e:
+    ...
+```
+
+---
+
+# Файл №3
+
+## `requirements.txt`
+
+Добавить:
+
+```text
+ollama
+```
+
+И выполнить:
+
+```bash
+pip install ollama
+```
+
+---
+
+# Файл №4
+
+## `.env`
+
+Раньше:
+
+```env
+GEMINI_API_KEY=xxxxxxxx
+```
+
+После перехода можно оставить, но уже не использовать.
+
+Дополнительно можно добавить:
+
+```env
+LLM_PROVIDER=ollama
+OLLAMA_MODEL=qwen3:4b
+```
+
+---
+
+# Файл №5 (рекомендую)
+
+## `app/config.py`
+
+Сделай единое место настроек:
+
+```python
+import os
+
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:4b")
+```
+
+---
+
+Тогда в `ollama_client.py`:
+
+```python
+from ollama import chat
+from app.config import OLLAMA_MODEL
+
+
+def ask_ollama(prompt: str) -> str:
+    response = chat(
+        model=OLLAMA_MODEL,
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+
+    return response["message"]["content"]
+```
+
+---
+
+# Что НЕ нужно менять
+
+Эти файлы остаются как есть:
+
+### ChromaDB
+
+```text
+app/rag/retriever.py
+```
+
+---
+
+### PDF индексатор
+
+```text
+app/rag/index_builder.py
+```
+
+---
+
+### PDF loader
+
+```text
+app/rag/pdf_loader.py
+```
+
+---
+
+### splitter
+
+```text
+app/rag/text_splitter.py
+```
+
+---
+
+### Telegram
+
+```text
+app/bot/handlers.py
+```
+
+---
+
+### Faktura API
+
+```text
+app/api/*
+```
+
+---
+
+### Review system
+
+```text
+app/review/*
+```
+
+---
+
+### CSV logger
+
+```text
+app/logs/*
+```
+
+---
+
+# Что желательно улучшить после перехода
+
+В `generator.py` сейчас, вероятно, промпт писался под Gemini.
+
+Для Qwen лучше использовать такой формат:
+
+```python
+prompt = f"""
+Ты помощник Faktura.uz.
+
+Отвечай только используя контекст.
+
+Если информации недостаточно,
+честно сообщи об этом.
+
+Язык ответа: {language}
+
+Контекст:
+{context}
+
+Вопрос:
+{question}
+"""
+```
+
+---
+
+# Проверка после замены
+
+Создай файл:
+
+## `test_qwen.py`
+
+```python
+from app.llm.ollama_client import ask_ollama
+
+answer = ask_ollama(
+    "Что такое электронный документооборот?"
+)
+
+print(answer)
+```
+
+Запуск:
+
+```bash
+python test_qwen.py
+```
+
+Если ответ появился — Ollama работает.
+
+---
+
+# Полная схема после перехода
+
+```text
+User
+↓
+Telegram
+↓
+handlers.py
+↓
+bot_engine.py
+↓
+query_rewriter.py
+↓
+retriever.py
+↓
+ChromaDB
+↓
+generator.py
+↓
+ollama_client.py
+↓
+Qwen3
+↓
+Ответ
+```
+
+---
+
+Я бы рекомендовал ещё один шаг: **не удалять Gemini сразу**, а сделать переключатель.
+
+Например:
+
+```python
+LLM_PROVIDER=gemini
+```
+
+или
+
+```python
+LLM_PROVIDER=ollama
+```
+
+Тогда можно будет одной строкой в `.env` переключаться между моделями и сравнивать качество ответов на одинаковых вопросах. Это очень удобно на этапе тестирования Faktura Assistant.
+
+
+
+
+
+
+
+
+!!!!
+не работает api
+кнопка назад при английском и узбекском не работает
+жирный текст
+модель еще тупит
+посчитать стоимость модели и сервера
+админ панель для просмотра плохих ответов
+авторизация процессов
+фото запрос
+
+

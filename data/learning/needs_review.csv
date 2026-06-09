@@ -1,0 +1,456 @@
+﻿case_20260608_110229_979677,2026-06-08 11:02:29,ru,Какие типы документов есть в Faktura?,"Error in generating answer: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",Маршрутизация документов – WIKI FAKTURA.pdf | distance = 11.754992485046387; Маршрутизация документов – WIKI FAKTURA.pdf | distance = 11.791948318481445; Массовая рассылка – WIKI FAKTURA.pdf | distance = 11.949718475341797; Согласование документов – WIKI FAKTURA.pdf | distance = 12.089102745056152; Согласование документов – WIKI FAKTURA.pdf | distance = 12.144987106323242,needs_review,generator_error,,"503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
+case_20260608_110637_478137,2026-06-08 11:06:37,ru,Какие типы документов есть в Faktura,"Error in generating answer: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",Маршрутизация документов – WIKI FAKTURA.pdf | distance = 10.220124244689941; Маршрутизация документов – WIKI FAKTURA.pdf | distance = 10.377161026000977; Согласование документов – WIKI FAKTURA.pdf | distance = 10.38184928894043; Прикрепление файлов к документу – WIKI FAKTURA.pdf | distance = 10.486159324645996; Массовая рассылка – WIKI FAKTURA.pdf | distance = 10.63270378112793,needs_review,generator_error,,"503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
+case_20260608_115817_738336,2026-06-08 11:58:17,ru,Проверь ИНН 302563857,"Error in generating answer: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",Faktura API: CheckCompanyExist,needs_review,generator_error,,"503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
+case_20260608_120127_882229,2026-06-08 12:01:27,ru,проверь инн 489043363,"Error in generating answer: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",Faktura API: CheckCompanyExist,needs_review,generator_error,,"503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
+case_20260608_120335_378774,2026-06-08 12:03:35,ru,Какие типы документов есть в Faktura?,"Error in generating answer: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",Faktura API: GetDocumentTypes,needs_review,generator_error,,"503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
+case_20260608_120443_123457,2026-06-08 12:04:43,ru,Как создать счет-фактуру,"Error in generating answer: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",Счет-фактура акциз (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 7.128816604614258; Счет-фактура ФАРМ(ПКМ № 489) – WIKI FAKTURA.pdf | distance = 7.489807605743408; Счет-фактура ФАРМ(ПКМ № 489) – WIKI FAKTURA.pdf | distance = 8.235957145690918; Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 8.564356803894043; Счет-фактура акциз (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 8.721687316894531,needs_review,generator_error,,"503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
+case_20260608_120726_572332,2026-06-08 12:07:26,ru,Как создать счет-фактуру,"Error in generating answer: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",Счет-фактура акциз (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 7.128816604614258; Счет-фактура ФАРМ(ПКМ № 489) – WIKI FAKTURA.pdf | distance = 7.489807605743408; Счет-фактура ФАРМ(ПКМ № 489) – WIKI FAKTURA.pdf | distance = 8.235957145690918; Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 8.564356803894043; Счет-фактура акциз (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 8.721687316894531,needs_review,generator_error,,"503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
+case_20260608_125107_658421,2026-06-08 12:51:07,ru,Какие типы документов есть в Faktura?,Error in generating answer: argument of type 'bool' is not iterable,Faktura API: GetDocumentTypes,needs_review,generator_error,,argument of type 'bool' is not iterable
+case_20260608_125235_815661,2026-06-08 12:52:35,ru,Как войти в аккаунт,"Чтобы войти в аккаунт Faktura.uz, выполните следующие шаги:
+
+1.  Откройте веб-браузер и перейдите на сайт: https://faktura.uz.
+2.  На главной странице нажмите кнопку «Войти», которая расположена в правом верхнем углу.
+
+**Что можно проверить, если не получается войти:**
+
+*   **Данные для входа:** Убедитесь, что правильно ввели номер телефона или адрес электронной почты, а также пароль.
+*   **ЭЦП:** Если вход связан с Электронной цифровой подписью (ЭЦП), проверьте, доступен ли сертификат ЭЦП на вашем компьютере и корректно ли он работает через программу e-imzo.
+*   **Для сотрудников:** Если вы являетесь сотрудником, проверьте, был ли вы добавлен администратором и активировали ли приглашение.
+
+**Если вы забыли пароль:**
+
+1.  На странице входа найдите ссылку «Забыли пароль?» или аналогичную.
+2.  Нажмите на нее и введите адрес электронной почты, связанный с вашим аккаунтом.
+3.  Проверьте свою электронную почту – туда будет отправлено письмо с инструкциями по восстановлению пароля.
+4.  Перейдите по ссылке из письма, чтобы создать новый пароль для вашего аккаунта.
+
+Если после всех этих действий доступ восстановить не удалось, вы можете обратиться в поддержку Faktura.uz по номеру: +998 71 200 00 13.
+
+**Источник / основание из базы:**
+*   approved_case:manual_login_001
+*   Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf",approved_case:manual_login_001 | distance = 4.811267375946045; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 7.715101718902588; approved_case:manual_login_001 | distance = 9.140971183776855; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 9.804230690002441; Согласование документов – WIKI FAKTURA.pdf | distance = 9.84921932220459,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_130313_589987,2026-06-08 13:03:13,ru,проверь инн 489043363,Error in generating answer: argument of type 'bool' is not iterable,Faktura API: CheckCompanyExist,needs_review,generator_error,,argument of type 'bool' is not iterable
+case_20260608_142443_183380,2026-06-08 14:24:43,ru,Как войти в аккаунт,"Чтобы войти в аккаунт Faktura.uz:
+
+**Краткий ответ**
+Откройте веб-браузер и перейдите на сайт https://faktura.uz. На главной странице нажмите кнопку «Войти», которая расположена в правом верхнем углу. После этого вам будет предложено ввести свои учетные данные (номер телефона или электронную почту и пароль) для входа.
+
+**Что можно проверить**
+Если у вас возникли трудности со входом, пожалуйста, проверьте следующее:
+*   **Правильность введенных данных:** Убедитесь, что вы верно ввели номер телефона или электронную почту, а также пароль.
+*   **ЭЦП:** Если ваш вход связан с использованием ЭЦП, проверьте, что сертификат ЭЦП доступен на вашем компьютере и корректно функционирует через e-imzo.
+*   **Статус сотрудника:** Если вы являетесь сотрудником, уточните, был ли ваш аккаунт добавлен администратором и активировали ли вы приглашение.
+
+**Если в базе нет точной инструкции**
+Если после всех проверок войти не удается, и вам нужно сбросить пароль, точная инструкция по сбросу пароля доступна в базе знаний:
+1.  На странице входа в систему найдите и нажмите ссылку «Забыли пароль?» или аналогичную.
+2.  Введите адрес электронной почты, связанный с вашим аккаунтом, и отправьте запрос.
+3.  Проверьте свою почту — на указанный адрес будет отправлено письмо с инструкциями по восстановлению. Следуйте этим инструкциям.
+4.  Перейдя по ссылке из письма, вы сможете создать новый пароль для своего аккаунта.
+
+Если доступ восстановить не удалось, вы можете обратиться в поддержку Faktura.uz по телефону: +998 71 200 00 13.
+
+**Источник / основание из базы**
+*   approved_case:manual_login_001
+*   Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf",approved_case:manual_login_001 | distance = 4.811267375946045; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 7.715101718902588; approved_case:manual_login_001 | distance = 9.140971183776855; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 9.804230690002441; Согласование документов – WIKI FAKTURA.pdf | distance = 9.84921932220459,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_142530_912125,2026-06-08 14:25:30,ru,Забыл пароль от аккаунта,"Если вы забыли пароль от аккаунта Faktura.uz, вы можете восстановить его, следуя этим шагам:
+
+**Краткий ответ**
+Для восстановления пароля используйте функцию ""Забыли пароль?"" на странице входа, введя свой email.
+
+**Что можно проверить**
+1.  На главной странице Faktura.uz нажмите кнопку «Войти» (расположена в правом верхнем углу).
+2.  На странице входа в систему найдите ссылку «Забыли пароль?» или аналогичную и нажмите на нее.
+3.  Вам будет предложено ввести адрес электронной почты, связанный с вашим аккаунтом. Введите его и отправьте запрос.
+4.  Проверьте свою почту: на указанный адрес будет отправлено письмо с инструкциями по восстановлению пароля. Следуйте этим инструкциям.
+5.  После перехода по ссылке из письма вы сможете создать новый пароль для вашего аккаунта.
+
+Если доступ восстановить не удалось, вы можете обратиться в поддержку Faktura.uz по номеру: +998 71 200 00 13.
+
+**Источник / основание из базы**
+SOURCE 1, SOURCE 2",approved_case:manual_login_001 | distance = 5.017699241638184; approved_case:manual_login_001 | distance = 8.19371223449707; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 9.448054313659668; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 10.712435722351074; Согласование документов – WIKI FAKTURA.pdf | distance = 10.74261474609375,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_142635_439491,2026-06-08 14:26:35,ru,Как создать счет-фактуру,"Чтобы создать счет-фактуру:
+
+**Краткий ответ:**
+Вы можете создать счет-фактуру через ""Рабочий стол"" или боковое меню, выбрав соответствующий шаблон и заполнив необходимые данные.
+
+**Что можно проверить:**
+1.  **Начало создания:** Перейдите во вкладку ""Рабочий стол"" или откройте раздел ""Документы"" в боковом меню системы, затем выберите ""Создать документ"".
+2.  **Выбор шаблона:** Нажмите на кнопку ""Счет-фактура"" и выберите необходимый шаблон, например, ""Счет-фактура ФАРМ (ПКМ № 489)"" или ""Счет-фактура акциз (ПКМ № 489)"".
+3.  **Заполнение основных данных:**
+    *   Укажите номер и дату счета-фактуры, а также данные договора.
+    *   Проверьте тип счет-фактуры (по умолчанию ""Стандартный"", но его можно изменить).
+    *   В поле ""ИНН / ПИНФЛ покупателя"" укажите ИНН или название организации; остальные данные заполнятся автоматически.
+4.  **Заполнение табличной части:**
+    *   В поле ""ИКПУ и наименование товаров (работ, услуг)"" выберите нужный код. Если кода нет, его можно добавить в разделе ""Настройки"" -> ""ИКПУ коды"".
+    *   Заполните поле ""Описание товаров (работ, услуг)"".
+    *   Выберите единицу измерения.
+    *   Выберите происхождение товара (собственное производство, перепродажа, услуга, не участвую). Автоматический выбор можно настроить во вкладке ""Настройки"".
+    *   Чтобы добавить новую строку, нажмите на значок «+» или кнопку «Добавить ещё».
+5.  **Указание ответственных лиц:**
+    *   Укажите руководителя и главного бухгалтера организации. Их можно выбрать из списка добавленных сотрудников или ввести Ф.И.О. вручную. Автоматическое заполнение этих полей можно настроить в разделе «Настройки», затем в «Реестры».
+6.  **Сохранение:** Нажмите на кнопку «Создать документ» в правом нижнем углу для сохранения данных. Рядом расположена кнопка «Просмотр» для предварительного просмотра.
+
+**Источник / основание из базы:**
+*   SOURCE 1: Счет-фактура акциз (ПКМ № 489)
+*   SOURCE 2: Счет-фактура ФАРМ(ПКМ № 489)
+*   SOURCE 3: Счет-фактура ФАРМ(ПКМ № 489)
+*   SOURCE 5: Счет-фактура акциз (ПКМ № 489)",Счет-фактура акциз (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 7.128816604614258; Счет-фактура ФАРМ(ПКМ № 489) – WIKI FAKTURA.pdf | distance = 7.489807605743408; Счет-фактура ФАРМ(ПКМ № 489) – WIKI FAKTURA.pdf | distance = 8.235957145690918; Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 8.564356803894043; Счет-фактура акциз (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 8.721687316894531,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_143932_714473,2026-06-08 14:39:32,en,How to send document to counteragent,"To send a document to a counteragent, you can either send it directly after signing, or use the Hybrid Mail service.
+
+**What you can check:**
+
+1.  **For documents like invoices or contracts:**
+    *   After creating a document (e.g., an invoice or a contract), an window will open displaying the ready document.
+    *   In this window, you can sign the document using your EDS key.
+    *   After signing, you can then send the document to the buyer (counteragent).
+    *   *(Based on Source 1, Source 4)*
+
+2.  **Using Hybrid Mail:**
+    *   Fill in the ""Recipient (Full Name / Organization)"" and ""Recipient's address.""
+    *   Attach the document file (doc, docx, xls, xlsx, pdf, txt) that needs to be sent by clicking ""Choose file.""
+    *   Specify the ""Region and district"" of the recipient.
+    *   Click the ""Сохранить и отправить"" (Save and Send) button to complete the process and send the document.
+    *   *(Based on Source 2)*",Счет-фактура (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 16.021163940429688; Гибридная почта – WIKI FAKTURA.pdf | distance = 16.125713348388672; Подразделения – WIKI FAKTURA.pdf | distance = 16.219905853271484; Договор(Роуминг) – WIKI FAKTURA.pdf | distance = 16.67637062072754; Согласование документов – WIKI FAKTURA.pdf | distance = 16.767683029174805,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_144059_060819,2026-06-08 14:40:59,ru,Как войти в аккаунт,"Для входа в аккаунт Faktura.uz выполните следующие действия:
+
+**Краткий ответ**
+1. Откройте веб-браузер и перейдите на сайт: https://faktura.uz.
+2. На главной странице нажмите кнопку «Войти» (она расположена в правом верхнем углу).
+3. В открывшемся окне авторизации введите свои учетные данные (номер телефона или электронную почту и пароль) или используйте электронную цифровую подпись (ЭЦП), если вход связан с ней.
+
+**Что можно проверить (если возникли проблемы со входом)**
+Если у вас не получается войти в аккаунт, пожалуйста, проверьте следующее:
+*   **Учетные данные:** Убедитесь, что вы правильно ввели номер телефона или адрес электронной почты, а также пароль.
+*   **ЭЦП:** Если вы входите с помощью ЭЦП, проверьте, что ваш сертификат ЭЦП доступен на компьютере и корректно работает через программу e-imzo.
+*   **Статус сотрудника:** Если вы являетесь сотрудником, уточните у администратора, был ли ваш аккаунт добавлен и активировали ли вы приглашение.
+
+**Как восстановить пароль (если вы его забыли)**
+Если вход не удается из-за забытого пароля:
+1.  На странице входа в систему найдите и нажмите ссылку «Забыли пароль?» или аналогичную.
+2.  Введите адрес электронной почты, который связан с вашим аккаунтом, и отправьте запрос.
+3.  Проверьте свою электронную почту. Вам придет письмо с инструкциями по восстановлению пароля. Следуйте этим инструкциям.
+4.  Перейдя по ссылке из письма, вы сможете создать новый пароль для своего аккаунта.
+
+Если доступ восстановить не удалось, вы можете обратиться в поддержку Faktura.uz по номеру: +998 71 200 00 13.
+
+**Источник / основание из базы:**
+*   approved\_case:manual\_login\_001
+*   Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf",approved_case:manual_login_001 | distance = 4.811267375946045; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 7.715101718902588; approved_case:manual_login_001 | distance = 9.140971183776855; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 9.804230690002441; Согласование документов – WIKI FAKTURA.pdf | distance = 9.84921932220459,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_144142_153628,2026-06-08 14:41:42,ru,как настроить рассылку,"Чтобы настроить массовую рассылку в системе Faktura.uz, выполните следующие действия:
+
+**Краткий ответ:**
+Вы можете создать массовую рассылку через ""Рабочий стол"" или раздел ""Сообщения"" в боковом меню, затем указать название, загрузить документ и выбрать тип импорта контрагентов. Рассылка может быть в форматах внутреннего документа, гибридной почты, SMS или электронных писем.
+
+**Что можно проверить / Как настроить:**
+1.  **Доступ к функции:** В системе Faktura.uz перейдите на вкладку ""Рабочий стол"" или откройте раздел ""Сообщения"" в боковом меню и выберите ""Массовая рассылка"".
+2.  **Формат рассылки:** Определите, в каком виде вы хотите отправить рассылку:
+    *   **Внутренний документ:** Выберите формат ""Документ"". Откроется окно, где вы сможете загрузить необходимый файл.
+    *   **Гибридная почта:** (Отправка документов как в электронном, так и в бумажном виде).
+    *   **SMS-сообщения.**
+    *   **Электронные письма:** Направляются непосредственно на электронный адрес контрагента.
+3.  **Шаги по отправке (для внутреннего документа):**
+    *   Укажите название рассылки для удобной идентификации.
+    *   Загрузите необходимый документ с вашего компьютера. Поддерживаемые форматы: DOC, DOCX, XLS, XLSX, PDF, TXT, HTML.
+    *   Выберите тип импорта контрагентов, например, ""Моим контрагентам"".
+
+**Источник / основание из базы:**
+*   SOURCE 5: ""Рассылку в системе Faktura.uz можно создать во вкладке “Рабочий стол” или через боковое меню системы, открыв раздел “Сообщения” (Массовая рассылка).""
+*   SOURCE 1: ""Рассылку можно осуществить в различных форматах: в виде внутреннего документа, гибридной почты, SMS-сообщений, а также электронных писем..."", ""Для формирования рассылки в виде внутреннего документа... необходимо выбрать формат рассылки “Документ”... Откроется окно, в котором вы сможете загрузить необходимый файл..."", ""Для отправки рассылки выполните следующие шаги: 1. Укажите название рассылки... 2. Загрузите необходимый документ... Поддерживаемые форматы: DOC, DOCX, XLS, XLSX, PDF, TXT, HTML. 3. Выберите тип импорта контрагентов: – “Моим контрагентам” — рассылка""
+*   SOURCE 2: Описание создания гибридной почты (перейдите в раздел ""Документы"" - ""Гибридная почта"", нажмите ""Создать гибридную почту"").",Массовая рассылка – WIKI FAKTURA.pdf | distance = 7.471105575561523; Гибридная почта – WIKI FAKTURA.pdf | distance = 8.59012222290039; Массовая рассылка – WIKI FAKTURA.pdf | distance = 9.256071090698242; Оповещение – WIKI FAKTURA.pdf | distance = 9.272512435913086; Массовая рассылка – WIKI FAKTURA.pdf | distance = 9.471418380737305,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_144233_566028,2026-06-08 14:42:33,uz,Xodimni qanday qo'shish kerak,"Hozirgi bilimlar bazasida xodimni qanday qo'shish bo'yicha aniq ko'rsatma mavjud emas.
+
+**Nima qilish mumkin:**
+Ma'lumotlar bazasida ""Sotrudniki"" (Xodimlar) bo'limi mavjud, ammo xodim qo'shish uchun batafsil qadamlar keltirilmagan. Agar sizga ushbu masala bo'yicha yordam kerak bo'lsa, Faktura.uz qo'llab-quvvatlash xizmati bilan bog'lanishingiz mumkin.
+
+**Manba:** ""Sotrudniki – WIKI FAKTURA.pdf"" faylida xodimlar haqida umumiy ma'lumotlar bor, ammo qo'shish jarayoni batafsil yoritilmagan.
+Qo'llab-quvvatlash xizmati telefon raqami: +998 71 200 00 13.",Счет-фактура акциз (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 5.5189666748046875; Подразделения – WIKI FAKTURA.pdf | distance = 5.814998626708984; Гибридная почта – WIKI FAKTURA.pdf | distance = 6.076295375823975; Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 6.735381126403809; Сотрудники – WIKI FAKTURA.pdf | distance = 6.922529220581055,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_144452_316189,2026-06-08 14:44:52,en,How to send document to counteragent,"To send a document to a counteragent, you generally follow these steps:
+
+**Brief Answer:** You can send documents to a counteragent after they are ready and signed, or by using the Hybrid Mail service.
+
+**What you can check:**
+
+*   **For documents like Invoices or Contracts:**
+    1.  Once your document (e.g., an invoice or contract) is ready and open, you will have the option to view it.
+    2.  You can then sign the document using your EDS (Electronic Digital Signature) key.
+    3.  After signing, you can send the document to the buyer/recipient.
+*   **For sending documents via Hybrid Mail:**
+    1.  Attach the document file (doc, docx, xls, xlsx, pdf, txt) that you need to send.
+    2.  Specify the recipient's details, including their Full Name/Organization, Address, Region, and District.
+    3.  Click the ""Save and send"" button to complete the process and send the document.
+
+**Source / Basis from the database:**
+*   Source 1: ""Счет-фактура (ПКМ № 489) – WIKI FAKTURA.pdf""
+*   Source 2: ""Гибридная почта – WIKI FAKTURA.pdf""
+*   Source 4: ""Договор(Роуминг) – WIKI FAKTURA.pdf""",Счет-фактура (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 16.021163940429688; Гибридная почта – WIKI FAKTURA.pdf | distance = 16.125713348388672; Подразделения – WIKI FAKTURA.pdf | distance = 16.219905853271484; Договор(Роуминг) – WIKI FAKTURA.pdf | distance = 16.67637062072754; Согласование документов – WIKI FAKTURA.pdf | distance = 16.767683029174805,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_145441_362596,2026-06-08 14:54:41,ru,как создать сравнительный акт,"Краткий ответ:
+Для создания сравнительного акта (акта сверки) в системе Faktura.uz необходимо использовать вкладку ""Рабочий стол"" или раздел ""Документы"".
+
+Что можно проверить:
+1.  **Создание документа:**
+    *   Перейдите во вкладку ""Рабочий стол"".
+    *   Или через боковое меню системы откройте раздел ""Документы"" и выберите ""Создать документ"".
+2.  **Заполнение полей в редакторе акта сверки:**
+    *   Укажите номер и дату акта сверки.
+    *   Введите ИНН/ПИНФЛ партнера (название организации и ФИО директора заполнятся автоматически).
+    *   В разделе ""Описание"" название организации и ФИО директора также будут заполнены автоматически.
+    *   Заполните таблицу акта сверки, которая делится на два раздела: ""По данным Организации отправителя, сум"" и ""По данным Организации получателя, сум"".
+    *   Поля ""Итого по договору"", ""Сальдо конечное по договору"", ""Обороты за период"" и ""Сальдо конечное"" заполняются автоматически на основе введенных данных. Если требуется ручной ввод, нажмите кнопку ""Ручное вычисление"".
+    *   Для добавления новой строки в таблицу используйте кнопку «Добавить новую строку», для удаления — кнопку «Х» в нужной строке.
+
+Источник / основание из базы:
+SOURCE 1, SOURCE 2, SOURCE 5 (Акт-сверки(Роуминг) – WIKI FAKTURA.pdf)",Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 10.948629379272461; Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 11.814488410949707; Согласование документов – WIKI FAKTURA.pdf | distance = 12.413520812988281; Согласование документов – WIKI FAKTURA.pdf | distance = 12.888716697692871; Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 12.893531799316406,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_150452_477907,2026-06-08 15:04:52,uz,Hisobga kirishda raqamli imzoni tanlash imkoniyati ko'rinmaydi.,"Faktura.uz ma'lumotlar bazasida tizimga kirishda raqamli imzo (ЭЦП) tanlash imkoniyati ko'rinmayotgani bo'yicha aniq ko'rsatma mavjud emas.
+
+Shu sababli, ushbu holatda nimalarni tekshirish yoki qanday harakat qilish bo'yicha amaliy tavsiyalar bera olmayman, chunki buning uchun kerakli ma'lumotlar bazamizda topilmadi.",Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 5.351991653442383; Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 6.775869369506836; Счет-фактура ФАРМ(ПКМ № 489) – WIKI FAKTURA.pdf | distance = 6.909398078918457; Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 7.040583610534668; Оповещение – WIKI FAKTURA.pdf | distance = 7.099767208099365,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_151016_491479,2026-06-08 15:10:16,ru,как отправить счет фактуру контрагенту,"Чтобы отправить счет-фактуру контрагенту:
+
+**Краткий ответ:**
+После того как счет-фактура создан и готов, его можно подписать электронной цифровой подписью (ЭЦП) и отправить покупателю.
+
+**Что можно проверить:**
+1.  Убедитесь, что счет-фактура готов и открыт в окне просмотра.
+2.  Найдите опцию для подписания документа ЭЦП ключом.
+3.  После подписания, используйте соответствующую кнопку для отправки документа покупателю.
+
+**Источник / основание из базы:**
+SOURCE 3: ""В этом окне [с готовым документом], вы можете просмотреть документ, отправить на Согласование, подписать (ЭЦП ключом) и отправить документ покупателю.""",Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 4.329665660858154; Согласование документов – WIKI FAKTURA.pdf | distance = 4.818657875061035; Счет-фактура (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 5.501142501831055; Счет-фактура ФАРМ(ПКМ № 489) – WIKI FAKTURA.pdf | distance = 5.624283790588379; Подразделения – WIKI FAKTURA.pdf | distance = 5.667870044708252,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_151132_358754,2026-06-08 15:11:32,ru,Как создать счет-фактуру,"AI-модель временно недоступна из-за высокой нагрузки. Пожалуйста, попробуйте повторить запрос позже.",Счет-фактура акциз (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 7.128816604614258; Счет-фактура ФАРМ(ПКМ № 489) – WIKI FAKTURA.pdf | distance = 7.489807605743408; Счет-фактура ФАРМ(ПКМ № 489) – WIKI FAKTURA.pdf | distance = 8.235957145690918; Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 8.564356803894043; Счет-фактура акциз (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 8.721687316894531,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_152421_733236,2026-06-08 15:24:21,ru,не могу добавить номер для рассылки?,"К сожалению, в предоставленных инструкциях нет подробной информации о том, как добавить отдельный номер телефона для массовой рассылки.
+
+**Что можно проверить на основе доступной информации:**
+*   Система Faktura.uz поддерживает массовую рассылку в виде SMS-сообщений.
+*   При формировании рассылки предлагается выбрать тип импорта контрагентов, например, ""Моим контрагентам"". Это означает, что рассылка может быть отправлена контактам, которые уже есть в вашей базе.
+
+**Если в базе нет точной инструкции:**
+В базе знаний отсутствует точная инструкция по добавлению нового, индивидуального номера телефона, который не является вашим контрагентом, непосредственно для рассылки.
+
+**Источник / основание из базы:**
+*   Массовая рассылка – WIKI FAKTURA.pdf (Source 1)",Массовая рассылка – WIKI FAKTURA.pdf | distance = 10.41402816772461; Массовая рассылка – WIKI FAKTURA.pdf | distance = 11.301671981811523; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 11.665765762329102; Счет-фактура (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 12.409139633178711; Доверенность(Роуминг) – WIKI FAKTURA.pdf | distance = 13.21023941040039,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_162705_448122,2026-06-08 16:27:05,uz,k,"AI model hozircha yuqori yuklama sababli vaqtincha mavjud emas. Iltimos, birozdan keyin qayta urinib ko‘ring.",Оповещение – WIKI FAKTURA.pdf | distance = 22.757728576660156; Гибридная почта – WIKI FAKTURA.pdf | distance = 23.333568572998047; Маршрутизация документов – WIKI FAKTURA.pdf | distance = 23.604385375976562; Массовая рассылка – WIKI FAKTURA.pdf | distance = 23.625553131103516; Гибридная почта – WIKI FAKTURA.pdf | distance = 23.818767547607422,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_162752_921209,2026-06-08 16:27:52,uz,как создать ТТН,"TTN (Tovarno-transportnaya nakladnaya) yaratish uchun quyidagi amallarni bajaring:
+
+**Qisqa javob:**
+Faktura.uz tizimida TTN yaratish uchun bosh sahifadagi ""TTN"" tugmasini bosing yoki yon menyudagi ""Hujjatlar"" bo'limini ochib, so'ng ""Hujjat yaratish""ni tanlang va ro'yxatdan TTNni tanlang.
+
+**Nima qilish mumkin:**
+1.  **Kirish:** Tizimning bosh sahifasida ""TTN"" tugmasini bosing. Yoki yon menyudagi ""Hujjatlar"" bo'limini oching, so'ng ""Hujjat yaratish"" tugmasini bosing va ro'yxatdan ""TTN""ni tanlang.
+2.  **Shablonni tanlash:** ""TTN shabloni (yangi)""ni tanlang. Shablonni tanlagandan so'ng, TTN yaratish uchun redaktor ochiladi.
+3.  **Maydonlarni to'ldirish:** Redaktorda quyidagi maydonlarni to'ldirish kerak:
+    *   Tovarno-transportnaya nakladnayaning raqami va sanasi;
+    *   Shartnoma raqami va sanasi;
+    *   Tashish turini tanlash:
+        *   Ombordan omborga: bitta tashkilotning omborlari orasida tovarlarni tashish.
+        *   Sotuvchidan xaridorga: sotuvchidan xaridorga tovarlarni tashish.
+        *   Qayta ishlash / saqlash: keyinchalik qayta ishlash yoki vaqtincha saqlash uchun korxonaga tovarlarni tashish.
+    *   Yuk qabul qiluvchining INNini ko'rsating;
+    *   Ekspeditorni tanlang.
+4.  **Saqlash:** Ma'lumotlarni saqlash va TTNni yaratish uchun o'ng pastki burchakdagi ""Saqlash"" tugmasini bosing.
+
+**Manba / asos:**
+*   SOURCE 1: Товарно-транспортная накладная – WIKI FAKTURA.pdf (1-sahifa)
+*   SOURCE 2: Товарно-транспортная накладная – WIKI FAKTURA.pdf (2-sahifa)
+*   SOURCE 3: Товарно-транспортная накладная – WIKI FAKTURA.pdf (6-sahifa)",Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 10.614230155944824; Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 10.979942321777344; Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 13.256441116333008; Счет-фактура (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 15.004136085510254; Оповещение – WIKI FAKTURA.pdf | distance = 16.553070068359375,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_163023_364922,2026-06-08 16:30:23,en,как создатьТТН,"To create a Waybill (ТТН) in Faktura.uz, follow these steps:
+
+**Brief Answer:**
+You can create a Waybill by navigating to the ""TTN"" button on the main page or through the ""Documents"" section, then filling out the required fields in the editor.
+
+**What you can check:**
+1.  **Start Creation:**
+    *   On the system's main page, click the ""ТТН"" button.
+    *   Alternatively, open the ""Documents"" section in the side menu, then select ""Create document"" and choose ""ТТН"" from the list.
+2.  **Select Template:**
+    *   Choose the ""ТТН (new)"" template.
+3.  **Fill in Details:**
+    *   In the Waybill editor, you need to fill in the following fields:
+        *   Waybill number and date.
+        *   Contract number and date.
+        *   Type of transportation (e.g., ""From warehouse to warehouse"", ""From seller to buyer"", ""Processing / storage"").
+        *   Consignee's TIN (ИНН Грузополучателя).
+        *   Freight Forwarder (Экспедитор).
+4.  **Save:**
+    *   To save the data and create the Waybill, click the ""Save"" button in the lower right corner.
+
+**Source / Basis:**
+*   SOURCE 2, Page 1, ""На главной странице системы нажмите на кнопку « ТТН » или откройте раздел « Документы » в боковом меню системы затем « Создать документ » и выберите из списка ТТН .""
+*   SOURCE 2, Page 2, ""Выберите шаблон ТТН ( новая ).""
+*   SOURCE 1, Page 2, ""В редакторе ТТН необходимо заполнить следующие поля: 1. Номер и дату товарно - транспортной накладной; 2. Номер и дату договора; 3. Выбор типа перевозки; 4. Укажите ИНН Грузополучателя; 5. Выбор Экспедитора.""
+*   SOURCE 3, Page 6, ""Для сохранения данных и создания ТТН нажмите на кнопку « Сохранить » в правом нижнем углу .""",Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 7.660914421081543; Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 8.581355094909668; Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 9.349599838256836; Счет-фактура (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 10.763669967651367; Оповещение – WIKI FAKTURA.pdf | distance = 11.16470718383789,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_163733_152838,2026-06-08 16:37:33,ru,как создать ТТН,"AI-модель временно недоступна из-за высокой нагрузки. Пожалуйста, попробуйте повторить запрос позже.",Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 10.614230155944824; Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 10.979942321777344; Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 13.256441116333008; Счет-фактура (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 15.004136085510254; Оповещение – WIKI FAKTURA.pdf | distance = 16.553070068359375,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_164704_020418,2026-06-08 16:47:04,uz,🇬🇧 English,"AI model hozircha yuqori yuklama sababli vaqtincha mavjud emas. Iltimos, birozdan keyin qayta urinib ko‘ring.",Подразделения – WIKI FAKTURA.pdf | distance = 25.943437576293945; Счет-фактура акциз (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 26.347396850585938; Сотрудники – WIKI FAKTURA.pdf | distance = 26.92654800415039; Односторонний электронный счет-фактура – WIKI FAKTURA.pdf | distance = 27.704919815063477; Согласование документов – WIKI FAKTURA.pdf | distance = 27.751605987548828,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260608_171831_467641,2026-06-08 17:18:31,ru,https://t.me/fakturauz,"Это ссылка на официальный Telegram-канал Faktura.uz.
+
+Что можно проверить:
+Это одна из социальных сетей Faktura.uz, где обычно публикуются новости, обновления или предоставляется поддержка.
+
+Источник / основание из базы:
+Данная ссылка указана в разделе ""Социальные сети"" в нескольких документах базы знаний Faktura.uz, например, в ""Счет-фактура акциз (ПКМ № 489) – WIKI FAKTURA.pdf"" и ""Филиалы – WIKI FAKTURA.pdf"".",Счет-фактура акциз (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 3.5942957401275635; Односторонний электронный счет-фактура – WIKI FAKTURA.pdf | distance = 3.627610206604004; Подразделения – WIKI FAKTURA.pdf | distance = 3.7003679275512695; Филиалы – WIKI FAKTURA.pdf | distance = 4.067781448364258; Счет-фактура ФАРМ(ПКМ № 489) – WIKI FAKTURA.pdf | distance = 4.167425632476807,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260609_101458_987365,2026-06-09 10:14:58,ru,Проверь ИНН 489043363,Error in generating answer: argument of type 'bool' is not iterable,Faktura API: CheckCompanyExist,needs_review,generator_error,,argument of type 'bool' is not iterable
+case_20260609_132954_666659,2026-06-09 13:29:54,ru,Какие типы документов есть в Faktura?,Error in generating answer: argument of type 'bool' is not iterable,Faktura API: GetDocumentTypes,needs_review,generator_error,,argument of type 'bool' is not iterable
+case_20260609_134003_116549,2026-06-09 13:40:03,ru,Как создать ТТН,"AI-модель временно недоступна из-за высокой нагрузки. Пожалуйста, попробуйте повторить запрос позже.",Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 12.12990951538086; Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 13.053922653198242; Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 15.497387886047363; Счет-фактура (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 17.482759475708008; Оповещение – WIKI FAKTURA.pdf | distance = 18.994892120361328,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260609_134129_186547,2026-06-09 13:41:29,ru,как создать ТТН,"AI-модель временно недоступна из-за высокой нагрузки. Пожалуйста, попробуйте повторить запрос позже.",Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 10.614230155944824; Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 10.979942321777344; Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 13.256441116333008; Счет-фактура (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 15.004136085510254; Оповещение – WIKI FAKTURA.pdf | distance = 16.553070068359375,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260609_134425_235585,2026-06-09 13:44:25,ru,как войти в аккаунт,"Чтобы войти в аккаунт Faktura.uz, выполните следующие шаги:
+
+**Как войти:**
+1. Откройте веб-браузер и перейдите на сайт https://faktura.uz.
+2. На главной странице нажмите кнопку «Войти» (расположена в правом верхнем углу).
+
+**Что можно проверить, если возникли проблемы со входом:**
+Если не получается войти, проверьте следующее:
+*   **Данные для входа:** Убедитесь, что правильно ввели номер телефона или адрес электронной почты, а также пароль.
+*   **ЭЦП (если используется):** Если вход связан с ЭЦП, проверьте, что сертификат ЭЦП доступен на вашем компьютере и корректно работает через e-imzo.
+*   **Статус сотрудника:** Если вы являетесь сотрудником, уточните, был ли ваш аккаунт добавлен администратором и активировали ли вы приглашение.
+
+**Что делать, если забыли пароль:**
+Если вышеперечисленные шаги не помогли, и вы подозреваете, что забыли пароль, вы можете его сбросить:
+1.  На странице входа в систему найдите ссылку «Забыли пароль?» или аналогичную. Нажмите на нее.
+2.  Вам будет предложено ввести адрес электронной почты, связанный с вашим аккаунтом. Введите его и отправьте запрос.
+3.  Проверьте указанный адрес электронной почты. На него придет письмо с инструкциями по восстановлению пароля. Следуйте этим инструкциям.
+4.  После перехода по ссылке из письма вы сможете создать новый пароль для вашего аккаунта.
+
+Если доступ восстановить не удалось, обратитесь в поддержку Faktura.uz по телефону +998 71 200 00 13.
+
+**Источник / основание:**
+*   approved_case:manual_login_001
+*   Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf",approved_case:manual_login_001 | distance = 4.521193981170654; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 7.1351728439331055; approved_case:manual_login_001 | distance = 8.540674209594727; Согласование документов – WIKI FAKTURA.pdf | distance = 8.976272583007812; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 9.00132942199707,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260609_134452_615861,2026-06-09 13:44:52,ru,как создать счет-фактуру,"Для создания счет-фактуры в системе Faktura.uz выполните следующие шаги:
+
+**Краткий ответ**
+Создать счет-фактуру можно через вкладку ""Рабочий стол"" или через боковое меню системы, выбрав раздел ""Документы"" и соответствующий шаблон. После этого необходимо заполнить все обязательные поля, включая данные о покупателе, товарах/услугах, ответственных лицах, и сохранить документ.
+
+**Что можно проверить**
+1.  **Начало создания:**
+    *   Перейдите во вкладку **""Рабочий стол""** или
+    *   Откройте раздел **""Документы""** в боковом меню системы, затем выберите **""Создать документ""**.
+    *   После нажатия на кнопку **""Счет-фактура""**, выберите необходимый шаблон, например, **""Счет-фактура ФАРМ (ПКМ № 489)""**.
+2.  **Заполнение основных данных:**
+    *   Укажите **номер и дату счета-фактуры**, а также **данные договора**.
+    *   По умолчанию тип счета-фактуры установлен как ""Стандартный"". Чтобы выбрать другой тип, нажмите на установленный по умолчанию вариант, после чего откроется список доступных типов.
+3.  **Реквизиты покупателя:**
+    *   В поле **""ИНН / ПИНФЛ покупателя""** введите ИНН или название организации. Остальные данные система заполнит автоматически.
+4.  **Заполнение табличной части:**
+    *   В поле **""ИКПУ и наименование товаров (работ, услуг)""** выберите необходимый идентификационный код товара (услуги). Если нужный код не отобразился, перейдите в раздел **""Настройки""**, затем в **""ИКПУ коды""** и добавьте его.
+    *   Заполните поле **""Описание товаров (работ, услуг)""**.
+    *   Выберите **единицу измерения товара (услуги)**.
+    *   Выберите **происхождение товара** из списка (собственное производство, перепродажа, услуга, не участвую). Автоматический выбор происхождения можно настроить во вкладке **""Настройки""**.
+    *   Чтобы добавить дополнительную строку в таблицу, нажмите на значок **«+»** или на кнопку **«Добавить ещё»**.
+5.  **Указание ответственных лиц:**
+    *   После заполнения табличной части необходимо указать **руководителя и главного бухгалтера** организации. Их можно выбрать из списка добавленных сотрудников или ввести Ф. И. О. вручную. Автоматическое заполнение этих полей можно настроить в разделе **«Настройки»**, затем в **«Реестры»**.
+6.  **Сохранение документа:**
+    *   Для сохранения данных и создания счета-фактуры нажмите на кнопку **«Создать документ»** в правом нижнем углу.
+    *   Кнопка **«Просмотр»**, расположенная рядом, позволяет увидеть, как будет выглядеть ваш документ после создания.
+
+**Источник / основание из базы:**
+SOURCE 1, SOURCE 2, SOURCE 3, SOURCE 5.",Счет-фактура акциз (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 5.9088664054870605; Счет-фактура ФАРМ(ПКМ № 489) – WIKI FAKTURA.pdf | distance = 5.92970085144043; Счет-фактура ФАРМ(ПКМ № 489) – WIKI FAKTURA.pdf | distance = 6.656713962554932; Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 6.864534378051758; Счет-фактура акциз (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 7.119963645935059,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260609_134726_933002,2026-06-09 13:47:26,ru,как создать акт сверки,"Для создания акта сверки в системе Faktura.uz, следуйте этим шагам:
+
+**Краткий ответ:**
+Акт сверки можно создать через ""Рабочий стол"" или боковое меню в разделе ""Документы"", выбрав ""Создать документ"". После этого откроется редактор, где нужно будет заполнить обязательные поля и данные таблицы.
+
+**Что можно проверить:**
+1.  **Начало создания:** Перейдите на вкладку ""Рабочий стол"" или откройте боковое меню системы.
+2.  **Раздел документов:** Выберите раздел ""Документы"", а затем пункт ""Создать документ"".
+3.  **Заполнение полей:** В открывшемся редакторе акта сверки необходимо заполнить:
+    *   Номер и дату акта сверки.
+    *   ИНН / ПИНФЛ партнера (название организации и ФИО директора заполнятся автоматически).
+    *   В разделе ""Описание"" название организации и ФИО директора также заполнятся автоматически.
+4.  **Таблица акта сверки:** Таблица разделена на две части: ""По данным Организации отправителя, сум"" и ""По данным Организации получателя, сум"".
+    *   Поля ""Итого по договору"", ""Сальдо конечное по договору"", ""Обороты за период"" и ""Сальдо конечное"" заполняются автоматически. При необходимости ручного ввода нажмите кнопку ""Ручное вычисление"".
+    *   Чтобы добавить новую строку, нажмите кнопку «Добавить новую строку». Для удаления строки используйте кнопку « » в нужной строке.
+5.  **Несколько договоров:** Если акт сверки по нескольким договорам, вы можете добавить отдельную таблицу для каждого договора, нажав кнопку «Добавить новую таблицу».
+6.  **Сохранение:** После заполнения всех данных, нажмите кнопку ""Сохранить"" в правом нижнем углу экрана.
+
+**Источник / основание из базы:**
+*   SOURCE 1, 4 (как создать акт сверки, поля для заполнения)
+*   SOURCE 2 (разделы таблицы, ручное вычисление, добавление/удаление строк)
+*   SOURCE 5 (добавление таблицы для нескольких договоров, сохранение документа)",Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 7.131472110748291; Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 8.241302490234375; Согласование документов – WIKI FAKTURA.pdf | distance = 8.457547187805176; Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 8.540122985839844; Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 8.65285587310791,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260609_141918_809083,2026-06-09 14:19:18,ru,как создать гибридную почту,"Чтобы создать гибридную почту, выполните следующие шаги:
+
+**Краткий ответ**
+1.  Перейдите в раздел ""Документы"" и выберите ""Гибридная почта"".
+2.  Нажмите ""Создать гибридную почту"".
+3.  Заполните поля ""Получатель"", ""Адрес получателя"" и прикрепите документ.
+
+**Что можно проверить**
+*   Убедитесь, что вы находитесь в боковом меню системы.
+*   Проверьте, что вы заполнили все необходимые поля: ФИО/Организация получателя, адрес получателя и прикрепили нужный файл.
+
+**Источник / основание из базы**
+*   SOURCE 1: Гибридная почта – WIKI FAKTURA.pdf, раздел ""Создание гибридной почты"".",Гибридная почта – WIKI FAKTURA.pdf | distance = 6.234468460083008; Гибридная почта – WIKI FAKTURA.pdf | distance = 8.140311241149902; Массовая рассылка – WIKI FAKTURA.pdf | distance = 12.722698211669922; Массовая рассылка – WIKI FAKTURA.pdf | distance = 13.007669448852539; Массовая рассылка – WIKI FAKTURA.pdf | distance = 14.711494445800781,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260609_141956_765365,2026-06-09 14:19:56,ru,как создать транспортную накладную,"Чтобы создать товарно-транспортную накладную (ТТН), следуйте этим шагам:
+
+**Краткий ответ:**
+Создание ТТН включает заполнение данных о транспорте, адресах погрузки и доставки, информации о водителе и ответственном лице, а также сведений о перевозимом грузе.
+
+**Что можно проверить:**
+1.  **Данные транспорта:**
+    *   В разделе ""Данные транспорта"" выберите тип ""Грузоперевозка"".
+    *   Если автомобиль в лизинге, введите ИНН или ПИНФЛ владельца в строке ""Другие владельцы автомобилей"" для автоматического отображения сведений о транспорте.
+    *   Укажите государственный номер и модель автомобиля.
+2.  **Участники перевозки (если применимо):**
+    *   Укажите ИНН Грузополучателя.
+    *   Выберите Экспедитора (необязательно).
+    *   Выберите Грузоперевозчика.
+    *   Выберите Клиента (необязательно).
+    *   Выберите Заказчика (необязательно).
+    *   Укажите ИНН/ПИНФЛ ""Водителя"" и ""Ответственного лица, доставляющего груз"".
+3.  **Адреса:**
+    *   Выберите область и район, затем заполните поля ""Улица"" и ""Дом"" для адресов погрузки и доставки.
+    *   Укажите данные долготы и широты.
+4.  **Сведения о грузе:**
+    *   Заполните табличную часть ТТН, выбирая ""ИКПУ и наименование товаров (работ, услуг)"".
+    *   Укажите ""Общее расстояние (км)"" и ""Цена за 1 км"". ""Общая цена"" рассчитается автоматически.
+    *   Если груз отправляется на несколько адресов, используйте кнопку ""Добавить груз"" для каждого дополнительного адреса и детализируйте информацию о грузе для каждого из них.
+5.  **Сохранение:**
+    *   Для сохранения данных и создания ТТН нажмите кнопку ""Сохранить"" в правом нижнем углу.
+
+**Источник / основание из базы:**
+*   SOURCE 1, SOURCE 2, SOURCE 4, SOURCE 5 (Товарно-транспортная накладная – WIKI FAKTURA.pdf)",Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 6.923153400421143; Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 7.283416748046875; Согласование документов – WIKI FAKTURA.pdf | distance = 8.112293243408203; Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 8.199411392211914; Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 8.206154823303223,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260609_142211_887075,2026-06-09 14:22:11,ru,во время входа не появляется выбор ЭЦП,"Возможно, проблема связана с доступностью или работой вашего сертификата ЭЦП.
+
+**Что можно проверить:**
+1.  Убедитесь, что ваш сертификат ЭЦП доступен на компьютере.
+2.  Проверьте, корректно ли работает программа e-imzo, так как через нее происходит взаимодействие с ЭЦП.
+
+**Основание:** SOURCE 1 (manual\_login\_001)",approved_case:manual_login_001 | distance = 4.50252103805542; Согласование документов – WIKI FAKTURA.pdf | distance = 7.2881760597229; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 7.71683406829834; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 8.169168472290039; Выбор оператора электронного документооборота – WIKI FAKTURA.pdf | distance = 8.43920612335205,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260609_164408_738565,2026-06-09 16:44:08,ru,"Ошибка 'Sorry, no matching options' при выборе ЭЦП ключа на странице регистрации Faktura.uz. Что делать, если не найдены сертификаты ЭРИ?","AI-модель временно недоступна из-за высокой нагрузки. Пожалуйста, попробуйте повторить запрос позже.",approved_case:manual_login_001 | distance = 6.51348352432251; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 7.028526782989502; Доверенность(Роуминг) – WIKI FAKTURA.pdf | distance = 7.462338447570801; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 7.654741287231445; Согласование документов – WIKI FAKTURA.pdf | distance = 7.702083587646484,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260609_165106_530988,2026-06-09 16:51:06,ru,Проблема с выбором ЭРИ ключа при регистрации на Faktura.uz. Не найдено ни одного сертификата при регистрации.,"Краткий ответ:
+Если при регистрации в системе Faktura.uz не найдено ни одного сертификата ЭЦП, это может быть связано с тем, что система не видит ваш ЭЦП-ключ на компьютере.
+
+Что можно проверить:
+1.  **Доступность ЭЦП:** Убедитесь, что ваш сертификат ЭЦП доступен на компьютере и корректно работает через программу e-imzo (для взаимодействия с ЭЦП).
+2.  **Повторите шаг регистрации:** Во время ""Шага 5: Выбор ЭЦП и установка пароля"" система должна предложить выбрать сертификат ЭЦП. Если вы не видите его, возможно, есть проблема с обнаружением ключа.
+
+Если в базе нет точной инструкции:
+В предоставленной базе знаний нет отдельной инструкции по устранению неполадок, если система не обнаруживает ЭЦП-ключи, кроме общего указания на их доступность и работу через e-imzo.
+
+Источник / основание из базы:
+*   ""Шаг 5: Выбор ЭЦП и установка пароля... После подтверждения контактных данных система предложит выбрать сертификат электронной цифровой подписи (ЭЦП). Выберите нужный сертификат организации или физического лица с вашего компьютера."" (SOURCE 4)
+*   ""Если вход связан с ЭЦП, убедитесь, что сертификат ЭЦП доступен на компьютере и корректно работает через e-imzo."" (SOURCE 2)",Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 7.529058933258057; approved_case:manual_login_001 | distance = 8.65103530883789; Доверенность(Роуминг) – WIKI FAKTURA.pdf | distance = 9.499198913574219; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 10.144536018371582; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 10.288342475891113,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260609_165135_015895,2026-06-09 16:51:35,ru,Почему система не видит ключи ЭЦП при входе? Как решить проблему с отсутствием ЭЦП?,"Если система Faktura.uz не видит ключи ЭЦП при входе, это может быть связано с несколькими факторами, которые требуют проверки.
+
+**Что можно проверить:**
+1.  **Доступность ЭЦП на компьютере:** Убедитесь, что ваш сертификат ЭЦП доступен на компьютере, с которого вы пытаетесь войти в систему.
+2.  **Работа e-imzo:** Проверьте, корректно ли работает программа e-imzo на вашем компьютере. Система Faktura.uz взаимодействует с ЭЦП через e-imzo.
+3.  **Выбор сертификата:** Во время процесса регистрации или входа, система предлагает выбрать нужный сертификат ЭЦП с вашего компьютера. Важно, чтобы сертификат был распознан и выбран.
+4.  **Для сотрудников:** Если вы входите как сотрудник, убедитесь, что вы были добавлены администратором и активировали приглашение.
+
+**Если в базе нет точной инструкции:**
+В базе знаний нет пошаговой инструкции по устранению неполадок с программой e-imzo, если она не работает корректно.
+
+**Источник / основание из базы:**
+*   approved_case:manual_login_001
+*   Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf",approved_case:manual_login_001 | distance = 4.278987884521484; Согласование документов – WIKI FAKTURA.pdf | distance = 5.405634880065918; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 6.999483585357666; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 7.170879364013672; Доверенность(Роуминг) – WIKI FAKTURA.pdf | distance = 7.5943498611450195,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.
+case_20260609_165233_212697,2026-06-09 16:52:33,ru,Не отображается ключ ЭЦП при входе в систему Faktura.uz,"Краткий ответ:
+Если ключ ЭЦП не отображается при входе в систему Faktura.uz, это может быть связано с его доступностью или корректной работой на вашем компьютере.
+
+Что можно проверить:
+*   Убедитесь, что сертификат ЭЦП доступен на вашем компьютере.
+*   Проверьте, корректно ли работает ваш сертификат ЭЦП через программу e-imzo.
+*   Убедитесь, что вы прошли регистрацию в системе Faktura.uz с использованием этого сертификата ЭЦП, так как для входа в личный кабинет необходимо иметь сертификат ЭЦП и быть зарегистрированным.
+
+Источник / основание из базы:
+*   approved_case:manual_login_001
+*   Доверенность(Роуминг) – WIKI FAKTURA.pdf",approved_case:manual_login_001 | distance = 2.844604969024658; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 5.564021110534668; approved_case:manual_login_001 | distance = 6.601891994476318; Доверенность(Роуминг) – WIKI FAKTURA.pdf | distance = 7.720578670501709; Согласование документов – WIKI FAKTURA.pdf | distance = 7.884464740753174,needs_review,weak_source_distance,,Auto-saved by bot_engine because answer/context/source quality is weak.

@@ -1,0 +1,12 @@
+05-06-2026
+
+* Add bot_engine.py, language.py, test_bot_engine
+Now bot itself can detect user input language and answer in it
+* Changes: due limit of embedding in Gemini I change into local embedding using SententceTransformer
+Due it some part of embedding.py, index_builder.py, retriever.py, generator.py was changed
+
+* Add case_logger/review_manager/ approved_loader
+* update index_builder, bot_engine
+
+
+

@@ -1,0 +1,8 @@
+google-genai
+python-dotenv
+chromadb
+pypdf
+langdetect
+sentence-transformers
+requests
+aiogram
