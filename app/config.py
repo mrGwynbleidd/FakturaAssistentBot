@@ -1,11 +1,10 @@
-#read API key from .env
-
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+# Явно указываем путь к .env — всегда найдёт независимо откуда запускаешь
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
-#load API key
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
@@ -19,10 +18,8 @@ FAKTURA_ACCOUNT_URL = os.getenv("FAKTURA_ACCOUNT_URL", "https://account.faktura.
 
 ADMIN_IDS: set[int] = {int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()}
 
-
-#if not found API key
 if not GEMINI_API_KEY:
-    raise ValueError("GEMINI_API_KEY not founded in .env")
+    raise ValueError("GEMINI_API_KEY not found in .env")
 
 if not TELEGRAM_BOT_TOKEN:
-    raise ValueError("TELEGRAM_BOT_TOKEN not founded in .env")
+    raise ValueError("TELEGRAM_BOT_TOKEN not found in .env")
