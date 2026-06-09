@@ -1,3 +1,6 @@
+import os
+os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
+
 import asyncio
 
 from aiogram import Bot, Dispatcher
