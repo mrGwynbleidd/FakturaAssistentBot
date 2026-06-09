@@ -6,9 +6,12 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage  # добавь
 
-from app.config import TELEGRAM_BOT_TOKEN
+from app.config import TELEGRAM_BOT_TOKEN, HF_TOKEN
 from app.bot.handlers import router
 from app.bot.admin_handlers import router as admin_router  # добавь
+
+if HF_TOKEN:
+    os.environ["HF_TOKEN"] = HF_TOKEN
 
 
 async def main():

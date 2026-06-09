@@ -16,6 +16,8 @@ FAKTURA_CLIENT_SECRET = os.getenv("FAKTURA_CLIENT_SECRET")
 FAKTURA_API_BASE_URL = os.getenv("FAKTURA_API_BASE_URL", "https://api.faktura.uz")
 FAKTURA_ACCOUNT_URL = os.getenv("FAKTURA_ACCOUNT_URL", "https://account.faktura.uz")
 
+HF_TOKEN = os.getenv("HF_TOKEN")
+
 ADMIN_IDS: set[int] = {int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()}
 
 if not GEMINI_API_KEY:
