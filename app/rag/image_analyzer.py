@@ -21,19 +21,19 @@ def analyze_sceenshot(image_bytes: bytes, language: str = "ru") -> dict:
 
 ЗАДАЧА:
 1. Найди и выпиши дословно любой текст ошибки, сообщения или уведомления на скриншоте.
-2. Если видишь форму, таблицу или интерфейс - опиши кратко чтотам происходит.
-3. Сформулируй поисковый запрос (1-2 предложения) для поиска в базе знаний Faktura.uz.
+   Если текста нет - оставь поле пустым.
+2. Опиши одним предложением что видно: какой раздел/экран/форма системы Faktura.uz.
+3. ОБЯЗАТЕЛЬНО сформулируй поисковый запрос (1-2 предложения) для поиска в базе знаний Faktura.uz.
+   Даже если текста нет - составь запрос по тому что видно на экране.
 
 ЯЗЫК ОТВЕТА: {language}
 
-фОРМАТ ОТВЕТА (строго JSON)
+ФОРМАТ ОТВЕТА (строго JSON, без markdown-обёртки):
 {{
-    "extracted_text": "дословный текст с экрана или описание проблемы",
-    "search_query": "краткий запрос для поиска в базе знаний",
-    "description": "одно предложение - что видно на скринщоте"
+    "extracted_text": "дословный текст ошибки/сообщения с экрана, или пустая строка если текста нет",
+    "search_query": "запрос для поиска в базе знаний (ВСЕГДА заполнять)",
+    "description": "одно предложение — что видно на скриншоте"
 }}
-
-Отвечай ТОЛЬКО валидным JSON без markdown-обёртки.
 """
     
     last_error = None
@@ -66,12 +66,13 @@ def analyze_sceenshot(image_bytes: bytes, language: str = "ru") -> dict:
                 }
             except Exception as err:
                 last_error = err
-                print(f"[image_analyzer] model={model}, attempt = {attempt +1},error ={err}")
+                import logging
+                logging.getLogger("bot").warning(f"Gemini vision [{model}] attempt {attempt+1}: {err}")
                 time.sleep(2)
 
     return {
-        "extraced_text": "",
+        "extracted_text": "",
         "search_query": "",
-        "description":  "",
+        "description": "",
         "error": str(last_error),
     }

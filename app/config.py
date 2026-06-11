@@ -18,8 +18,7 @@ FAKTURA_ACCOUNT_URL = os.getenv("FAKTURA_ACCOUNT_URL", "https://account.faktura.
 
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-ADMIN_IDS: set[int] = {int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()}
-
+ADMIN_IDS=677539972
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY not found in .env")
 

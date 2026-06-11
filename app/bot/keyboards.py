@@ -5,7 +5,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 #main menu
 def main_menu_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
-    
+
     #main menu in uzbek
     if language == "uz":
         keyboard = [
@@ -21,30 +21,28 @@ def main_menu_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
                 KeyboardButton(text="🔄 Qayta boshlash"),
             ],
         ]
-
-        placeholder = "Faktura.uz bo‘yicha savolingizni yozing..."
+        placeholder = "Faktura.uz bo’yicha savolingizni yozing..."
 
     #in english
     elif language == "en":
-            keyboard = [
-                 [
-                      KeyboardButton(text="❓ Ask a question"),
-                      KeyboardButton(text="🌐 Choose language"),
-                 ],
-                [
+        keyboard = [
+            [
+                KeyboardButton(text="❓ Ask a question"),
+                KeyboardButton(text="🌐 Choose language"),
+            ],
+            [
                 KeyboardButton(text="📚 Bot features"),
                 KeyboardButton(text="🆘 Support"),
-                ],
-                [
+            ],
+            [
                 KeyboardButton(text="🔄 Restart"),
-                ],
-            ]
-
-            placeholder = "Write your question about Faktura.uz..."
+            ],
+        ]
+        placeholder = "Write your question about Faktura.uz..."
 
     #by default russian
-    else:           
-        keyboard =[
+    else:
+        keyboard = [
             [
                 KeyboardButton(text="❓ Задать вопрос"),
                 KeyboardButton(text="🌐 Выбрать язык"),
@@ -57,13 +55,13 @@ def main_menu_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
                 KeyboardButton(text="🔄 Перезапустить"),
             ],
         ]
+        placeholder = "Напишите ваш вопрос по Faktura.uz..."
 
-        #msg while answer is creating
-        return ReplyKeyboardMarkup(
-            keyboard=keyboard,
-            resize_keyboard=True,
-            input_field_placeholder="Напишите ваш вопрос по Faktura.uz...",
-        )
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+        input_field_placeholder=placeholder,
+    )
 
 #language selector
 def language_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:

@@ -35,8 +35,8 @@ def retrieve_context(question: str, n_results: int = 5) -> tuple[str, list[dict]
     #extend question
     search_query = rewrite_query(question)
 
-    print("Original question: ", question)
-    print("Search query: ", search_query)
+    import logging
+    logging.getLogger("bot").info(f"🔍 Поиск: {search_query[:60]}")
 
     #embedding user question
     question_embedding = get_embedding(search_query)

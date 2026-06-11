@@ -18,6 +18,13 @@ def should_use_faktura_api(question: str) -> bool:
         "инн",
         "компания зарегистрирована",
         "check company",
+        "check employee",
+        "getemployees",
+        "getcompanyroles",
+        "check roles",
+        "получить роли в компании",
+        "роли",
+        "roles",
     ]
 
     return any(keyword in q for keyword in api_keywords)
@@ -60,6 +67,28 @@ def detect_api_intent(question: str) -> str | None:
         ]
     ):
         return "check_company_exists"
+    
+    if any(
+        x in q
+        for x in [
+            "check employee",
+            "getemployees",
+            "проверить сотрудника",
+            "Получение сотрудников организации"
+        ]
+    ): 
+        return "get_employees"
+    
+    if any(
+        x in q
+        for x in [
+            "getcompanyroles",
+            "check roles",
+            "получить роли в компании",
+            "роли",
+            "roles",
+        ]
+    ): return "get_company_roles"
 
     return None
 

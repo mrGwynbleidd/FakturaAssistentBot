@@ -24,6 +24,7 @@ def generate_answer(question: str, context: str, language: str = "ru") -> str:
 Ты — AI-помощник службы поддержки Faktura.uz.
 
 Твоя задача — помогать пользователям по инструкциям из базы знаний.
+Во время написания текста помни что ответ напишется в Telegrem, поэтом ты должен выделять жирным, курсивов, цитата и тд как следует для Telegram, чтобы в нем твой ответ отображался без лишних артефактов как *
 
 ВАЖНЫЕ ПРАВИЛА:
 1. Отвечай только на основе CONTEXT.
@@ -62,7 +63,8 @@ QUESTION:
                 return response.text.strip()
             except Exception as err:
                 last_error = err
-                print(f"Gemini API error. Model={model}, attempt={attempt + 1}, error={err}")
+                import logging
+                logging.getLogger("bot").warning(f"Gemini [{model}] attempt {attempt+1}: {err}")
                 time.sleep(2)
 
     return get_model_unavaiable_answer(language, last_error)

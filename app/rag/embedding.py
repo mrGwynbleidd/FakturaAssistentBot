@@ -1,3 +1,13 @@
+# from pathlib import Path
+
+# MODEL_PATH = Path(__file__).resolve().parents[2] / "models" / "embedding_model"
+
+# if MODEL_PATH.exists():
+#     embedding_model = SentenceTransformer(str(MODEL_PATH))
+# else:
+#     embedding_model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+
+
 #import sentence transformar
 from sentence_transformers import SentenceTransformer
 
@@ -17,7 +27,8 @@ def get_embedding(text: str) -> list[float]:
 #create embedding for list of text. used in index_builder
 def get_embeddings(texts: list[str]) -> list[list[float]]:
 
-    print(f"Creating local embedding for {len(texts)} fragments...")
+    import logging
+    logging.getLogger("bot").info(f"Embedding {len(texts)} fragments...")
 
     embedding = embedding_model.encode(
         texts,

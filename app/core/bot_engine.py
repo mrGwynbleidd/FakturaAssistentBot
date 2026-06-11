@@ -1,5 +1,8 @@
 #Main file will manage with whole process
 
+import logging
+log = logging.getLogger("bot")
+
 #import all nessecary libs
 from app.bot.language import detect_language
 from app.rag.retriever import retrieve_context
@@ -83,12 +86,8 @@ def should_send_to_review(answer: str, context: str, sources: list[dict]) -> tup
 # save q/a in csv -> return result
 def process_user_question(question: str, save_to_csv: bool = True, save_review_cases: bool = True, forced_language: str | None = None,) -> dict:
     
-    #Check question
-
     question = question.strip()
-    
 
-    #if question is empty
     if not question:
         return {
             "success": False,
@@ -101,34 +100,29 @@ def process_user_question(question: str, save_to_csv: bool = True, save_review_c
             "review_case_id": None,
             "review_reason": None,
         }
-    
-    #Detect language
+
     language = forced_language or detect_language(question)
+    log.info(f"❓ Вопрос [{language.upper()}]: {question[:80]}")
 
     context = ""
     sources = []
     is_api_request = False
     api_intent = None
 
-    #Search context in Chroma
     try:
         if should_use_faktura_api(question):
             api_intent = detect_api_intent(question)
-
             if api_intent:
                 is_api_request = True
+                log.info(f"🔌 API-запрос: {api_intent}")
                 context, sources = get_api_context(question, api_intent)
-
-                print("IS API REQUEST:", is_api_request)
-                print("API INTENT:", api_intent)
-                print("CONTEXT:", context[:500])
-                print("SOURCES:", sources)
-
             else:
+                log.info("📚 Поиск в базе знаний...")
                 context, sources = retrieve_context(question, n_results=5)
         else:
+            log.info("📚 Поиск в базе знаний...")
             context, sources = retrieve_context(question, n_results=5)
-    
+
     except Exception as error:
         error_answer = f"Error in searching context in base of knowledge: {error}"
 
@@ -165,9 +159,9 @@ def process_user_question(question: str, save_to_csv: bool = True, save_review_c
         }
 
     try:
+        log.info("🤖 Генерация ответа (Gemini)...")
         if is_api_request:
             answer = generate_api_answer(
-
                 question=question,
                 api_context=context,
                 language=language,
@@ -216,24 +210,15 @@ def process_user_question(question: str, save_to_csv: bool = True, save_review_c
 
     if save_to_csv:
         try:
-            save_qa(
-                question=question,
-                answer=answer,
-                language=language,
-                sources=sources,
-            )
+            save_qa(question=question, answer=answer, language=language, sources=sources)
         except Exception as error:
-            print(f"CSV save error: {error}")
+            log.warning(f"CSV save error: {error}")
 
     sent_to_review = False
     review_case_id = None
     review_reason = None
 
-    need_review, reason = should_send_to_review(
-        answer=answer,
-        context=context,
-        sources=sources,
-    )
+    need_review, reason = should_send_to_review(answer=answer, context=context, sources=sources)
 
     if save_review_cases and need_review:
         try:
@@ -247,9 +232,11 @@ def process_user_question(question: str, save_to_csv: bool = True, save_review_c
             )
             sent_to_review = True
             review_reason = reason
-
+            log.info(f"📝 Сохранён на проверку ({reason})")
         except Exception as error:
-            print(f"Review case save error: {error}")
+            log.warning(f"Review case save error: {error}")
+
+    log.info("✅ Ответ отправлен")
 
     return {
         "success": True,
@@ -263,9 +250,9 @@ def process_user_question(question: str, save_to_csv: bool = True, save_review_c
         "review_reason": review_reason,
     }
 
-#take user sceenshots 
-#Gemini vision take text from photo
-#res go to base pipeline
+#take user screenshots
+#Gemini vision extracts text from photo
+#result goes to base RAG pipeline
 
 from app.rag.image_analyzer import analyze_sceenshot
 
@@ -276,94 +263,10 @@ def process_user_image(
         save_review_cases: bool = True,
         forced_language: str | None = None,
 ) -> dict:
-    
-    language = forced_language or "ru"
-    
-    #analyze photo
-    try:
-        image_info = analyze_sceenshot(image_bytes, language= language)
-    except Exception as err:
-        return {
-            "success": False,
-            "language": language,
-            "question": caption or "[изображение]",
-            "answer": f"Не удалось проанализировать изображение: {err}",
-            "sources": [],
-            "context": "",
-            "sent_to_review": False,
-            "review_case_id": None,
-            "review_reason": None,
-            "image_description": "",
-        }
-    
-    extracted_text = image_info.get("extraced_text", "")
-    search = image_info.get("search_query", "")
-    description = image_info.get("description", "")
 
-    #no text
-    if not extracted_text and not search:
-        no_text_answer = {
-            "ru": "Не смог распознать текст на изображении. Попробуйте описать проблему текстом.",
-            "uz": "Rasmdan matnni tanib bo'lmadi. Muammoni matn orqali tasvirlang.",
-            "en": "Could not extract text from the image. Please describe the issue in text.",
-        }
-        return {
-            "success": False,
-            "language": language,
-            "question": caption or "[изображение]",
-            "answer": no_text_answer.get(language, no_text_answer["ru"]),
-            "sources": [],
-            "context": "",
-            "sent_to_review": False,
-            "review_case_id": None,
-            "review_reason": None,
-            "image_description": description,
-        }
-    
-    
-    #build question
-    if caption:
-        combined_question = f"{caption}\n\n[Текст с фото]: {extracted_text}"
-
-    else:
-        combined_question = extracted_text
-
-    
-    #rag pipeline
-    rag_result = process_user_question(
-        question=search or combined_question,
-        save_to_csv=save_to_csv,
-        save_case_for_review = save_case_for_review,
-        forced_language=language,
-    )
-
-    #add description of photo
-    if description:
-        prefix_map = {
-            "ru": f"🖼 \bНа скриншоте:\b {description}\n\n",
-            "uz": f"🖼 \bSkrinshot:\b {description}\n\n",
-            "en": f"🖼 \bScreenshot:\b {description}\n\n",
-        }
-
-        prefix = prefix_map.get(language, prefix_map["ru"])
-        rag_result["answer"] = prefix + rag_result["answer"]
-
-    rag_result["image_description"] = description
-    return rag_result
-
-from app.rag.image_analyzer import analyze_sceenshot
-
-def process_user_image(
-        image_bytes: bytes,
-        caption: str ="",
-        save_to_csv: bool = True,
-        save_review_cases: bool = True,
-        forced_language: str | None = None,
-) -> dict:
-    
     language = forced_language or "ru"
 
-    #analyze photo
+    # analyze photo with Gemini vision
     try:
         image_info = analyze_sceenshot(image_bytes, language=language)
     except Exception as err:
@@ -378,18 +281,24 @@ def process_user_image(
             "review_reason": None,
             "image_description": "",
         }
-    
+
     extracted_text = image_info.get("extracted_text", "")
     search_query = image_info.get("search_query", "")
     description = image_info.get("description", "")
+    gemini_error = image_info.get("error")
 
-    #no text
-    if not extracted_text and not search_query:
+    # use description as fallback search query when Gemini couldn't extract text
+    # (e.g. all models failed, or image has no readable text but was described)
+    effective_query = search_query or extracted_text or description
+
+    if not effective_query:
         no_text_answer = {
-            "ru": "Не смог распознать текст на изображении. Опишите проблему текстом.",
+            "ru": "Не смог распознать содержимое изображения. Опишите проблему текстом.",
             "uz": "Rasmdan matnni tanib bo'lmadi. Muammoni matn orqali tasvirlang.",
-            "en": "Could not extract text from the image. Please describe the issue in text.",
+            "en": "Could not extract content from the image. Please describe the issue in text.",
         }
+        if gemini_error:
+            log.warning(f"Gemini image error: {gemini_error}")
         return {
             "success": False,
             "language": language,
@@ -401,8 +310,12 @@ def process_user_image(
             "review_reason": None,
             "image_description": description,
         }
-    
-    combined_question = f"{caption}\n\n[Текст со скриншота]: {extracted_text}" if caption else extracted_text
+
+    # build the question for the RAG pipeline
+    if caption:
+        combined_question = f"{caption}\n\n[Текст со скриншота]: {extracted_text}" if extracted_text else caption
+    else:
+        combined_question = extracted_text or description
 
     rag_result = process_user_question(
         question=search_query or combined_question,
@@ -411,15 +324,16 @@ def process_user_image(
         forced_language=language,
     )
 
-
+    # prepend screenshot description to the answer
     if description:
         prefix = {
             "ru": f"🖼 *На скриншоте:* {description}\n\n",
-                  "uz": f"🖼 *Skrinshot:* {description}\n\n",
-                  "en": f"🖼 *Screenshot:* {description}\n\n"}.get(language, "")
+            "uz": f"🖼 *Skrinshot:* {description}\n\n",
+            "en": f"🖼 *Screenshot:* {description}\n\n",
+        }.get(language, f"🖼 {description}\n\n")
         rag_result["answer"] = prefix + rag_result["answer"]
 
     rag_result["image_description"] = description
     return rag_result
-        
+
 

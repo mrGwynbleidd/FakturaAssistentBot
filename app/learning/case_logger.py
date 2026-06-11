@@ -71,6 +71,13 @@ def save_case_for_review(
         #check is dir created
         file_exists = NEEDS_REVIEW_PATH.exists()
 
+        #if file exists - check header
+        has_header = False
+        if file_exists:
+             with open(NEEDS_REVIEW_PATH, encoding="utf-8-sig", newline="") as file:
+                  first_line = file.readline()
+                  has_header = "case_id" in first_line
+
         #take unique id
         case_id = create_case_id()
 
@@ -89,9 +96,9 @@ def save_case_for_review(
 
         #write data in csv
         with open(NEEDS_REVIEW_PATH, mode="a", encoding="utf-8-sig", newline="") as file:
-             writer = csv.DictWriter(file, fieldnames=FIELDNAMES)
+             writer = csv.DictWriter(file, fieldnames=FIELDNAMES, quoting=csv.QUOTE_ALL)
 
-             if not file_exists:
+             if not has_header:
                   writer.writeheader()
 
              writer.writerow(row)

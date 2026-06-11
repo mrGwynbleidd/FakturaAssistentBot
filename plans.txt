@@ -135,750 +135,728 @@ Need dataset with keywords, and ability to detect it other languages
 
 !!!!!!!!!!!
 
-Читаю файлы бота:Нашёл все баги. Их три, объясняю:
+Теперь вижу все проблемы:
 
-**Баг 1 — `keyboards.py`:** кнопка English в `language_keyboard` называется `"🇬🇧 English"`, а в `handlers.py` хэндлер слушает `"🇬🇧/🇺🇸 English"` — текст не совпадает, хэндлер никогда не срабатывает.
+**Проблема 1 — `needs_review.csv` не имеет заголовка** (`case_id,datetime,...`) — поэтому `csv.DictReader` не знает названия колонок и `row.get("status")` всегда возвращает `None`. Кейсы есть, но фильтр `== "needs_review"` никогда не срабатывает.
 
-**Баг 2 — `keyboards.py`:** в `main_menu_keyboard` для `"ru"` нет кнопки `"🔄 Перезапустить"` — она есть только для `uz` и `en`. Из-за этого у русскоязычного меню структура разная.
+**Проблема 2 — `approved.csv`** — ответы с переносами строк ломают CSV потому что не экранируются правильно при записи.
 
-**Баг 3 — `handlers.py`:** в `restart_handler` написано `get_text("restart", "language")` — передана строка `"language"` вместо переменной `language`. Перезапуск всегда ломается.
+**Проблема 3 — нет даты** в `approved.csv` — в `APPROVED_FIELDNAMES` нет поля `datetime`.
 
-Вот исправленные файлы:
+Исправляю все три файла + добавляю управление админами:
 
-**`app/bot/keyboards.py`:**
+**`app/learning/case_logger.py`** — смотрю как пишется `needs_review.csv`:Теперь вижу всё. Проблема ясна — в `needs_review.csv` **нет заголовка** потому что файл уже существовал когда добавили `writer.writeheader()`. Поэтому первая строка это данные, а не заголовок — `DictReader` читает её как имена колонок и всё ломается.
 
-```python
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-
-
-def main_menu_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
-
-    if language == "uz":
-        keyboard = [
-            [
-                KeyboardButton(text="❓ Savol berish"),
-                KeyboardButton(text="🌐 Tilni tanlash"),
-            ],
-            [
-                KeyboardButton(text="📚 Bot imkoniyatlari"),
-                KeyboardButton(text="🆘 Yordam"),
-            ],
-            [
-                KeyboardButton(text="🔄 Qayta boshlash"),
-            ],
-        ]
-        placeholder = "Faktura.uz bo'yicha savolingizni yozing..."
-
-    elif language == "en":
-        keyboard = [
-            [
-                KeyboardButton(text="❓ Ask a question"),
-                KeyboardButton(text="🌐 Choose language"),
-            ],
-            [
-                KeyboardButton(text="📚 Bot features"),
-                KeyboardButton(text="🆘 Support"),
-            ],
-            [
-                KeyboardButton(text="🔄 Restart"),
-            ],
-        ]
-        placeholder = "Write your question about Faktura.uz..."
-
-    else:  # ru
-        keyboard = [
-            [
-                KeyboardButton(text="❓ Задать вопрос"),
-                KeyboardButton(text="🌐 Выбрать язык"),
-            ],
-            [
-                KeyboardButton(text="📚 Возможности бота"),
-                KeyboardButton(text="🆘 Поддержка"),
-            ],
-            [
-                KeyboardButton(text="🔄 Перезапустить"),
-            ],
-        ]
-        placeholder = "Напишите ваш вопрос по Faktura.uz..."
-
-    return ReplyKeyboardMarkup(
-        keyboard=keyboard,
-        resize_keyboard=True,
-        input_field_placeholder=placeholder,
-    )
-
-
-def language_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
-
-    if language == "uz":
-        back_text = "⬅️ Orqaga"
-    elif language == "en":
-        back_text = "⬅️ Back"
-    else:
-        back_text = "⬅️ Назад"
-
-    keyboard = [
-        [
-            KeyboardButton(text="🇷🇺 Русский"),
-            KeyboardButton(text="🇺🇿 O'zbekcha"),
-            KeyboardButton(text="🇬🇧 English"),  # БЫЛ "🇬🇧/🇺🇸 English" — не совпадало с хэндлером
-        ],
-        [
-            KeyboardButton(text=back_text),
-        ],
-    ]
-
-    return ReplyKeyboardMarkup(
-        keyboard=keyboard,
-        resize_keyboard=True,
-    )
-```
-
-**`app/bot/handlers.py`** — исправлены все тексты кнопок и баг с `restart`:
-
-```python
-from aiogram import Router, F
-from aiogram.types import Message
-from aiogram.filters import CommandStart, Command
-import asyncio
-
-from aiogram.exceptions import TelegramBadRequest
-from aiogram.utils.chat_action import ChatActionSender
-
-from app.core.bot_engine import process_user_question
-from app.bot.keyboards import main_menu_keyboard, language_keyboard
-from app.bot.texts import get_text
-
-router = Router()
-
-USER_LANGUAGES: dict[int, str] = {}
-
-
-def get_user_language(user_id: int) -> str:
-    return USER_LANGUAGES.get(user_id, "ru")
-
-
-async def delete_msg_safely(msg: Message) -> None:
-    try:
-        await msg.delete()
-    except TelegramBadRequest:
-        pass
-
-
-async def send_main_menu(message: Message, language: str) -> None:
-    await message.answer(
-        get_text("start", language),
-        reply_markup=main_menu_keyboard(language),
-    )
-
-
-# ── /start ────────────────────────────────────────────────────────────────────
-@router.message(CommandStart())
-async def start_handler(message: Message):
-    language = get_user_language(message.from_user.id)
-    await send_main_menu(message, language)
-
-
-# ── /restart ──────────────────────────────────────────────────────────────────
-@router.message(Command("restart"))
-async def restart_handler(msg: Message):
-    user_id = msg.from_user.id
-    USER_LANGUAGES.pop(user_id, None)
-    language = "ru"
-    await msg.answer(
-        get_text("restart", language),  # БАГ БЫЛ ЗДЕСЬ: передавалась строка "language"
-        reply_markup=main_menu_keyboard(language),
-    )
-
-
-# ── /help ─────────────────────────────────────────────────────────────────────
-@router.message(Command("help"))
-async def help_handler(msg: Message):
-    language = get_user_language(msg.from_user.id)
-    await msg.answer(get_text("features", language), reply_markup=main_menu_keyboard(language))
-
-
-# ── Главное меню — кнопки ─────────────────────────────────────────────────────
-@router.message(F.text.in_(["❓ Задать вопрос", "❓ Savol berish", "❓ Ask a question"]))
-async def ask_question_button(msg: Message):
-    language = get_user_language(msg.from_user.id)
-    await msg.answer(get_text("ask_question", language), reply_markup=main_menu_keyboard(language))
-
-
-@router.message(F.text.in_(["🌐 Выбрать язык", "🌐 Tilni tanlash", "🌐 Choose language"]))
-async def choose_language_button(msg: Message):
-    language = get_user_language(msg.from_user.id)
-    await msg.answer(get_text("choose_language", language), reply_markup=language_keyboard(language))
-
-
-@router.message(F.text.in_(["📚 Возможности бота", "📚 Bot imkoniyatlari", "📚 Bot features"]))
-async def features_handler(message: Message):
-    language = get_user_language(message.from_user.id)
-    await message.answer(get_text("features", language), reply_markup=main_menu_keyboard(language))
-
-
-@router.message(F.text.in_(["🆘 Поддержка", "🆘 Yordam", "🆘 Support"]))
-async def support_handler(message: Message):
-    language = get_user_language(message.from_user.id)
-    await message.answer(get_text("support", language), reply_markup=main_menu_keyboard(language))
-
-
-@router.message(F.text.in_(["🔄 Перезапустить", "🔄 Qayta boshlash", "🔄 Restart"]))
-async def restart_button_handler(msg: Message):
-    user_id = msg.from_user.id
-    USER_LANGUAGES.pop(user_id, None)
-    language = "ru"
-    await msg.answer(get_text("restart", language), reply_markup=main_menu_keyboard(language))
-
-
-# ── Выбор языка ───────────────────────────────────────────────────────────────
-@router.message(F.text == "🇷🇺 Русский")
-async def set_ru_language(msg: Message):
-    USER_LANGUAGES[msg.from_user.id] = "ru"
-    await msg.answer(get_text("language_set_ru", "ru"), reply_markup=main_menu_keyboard("ru"))
-
-
-@router.message(F.text == "🇺🇿 O'zbekcha")
-async def set_uz_language(msg: Message):
-    USER_LANGUAGES[msg.from_user.id] = "uz"
-    await msg.answer(get_text("language_set_uz", "uz"), reply_markup=main_menu_keyboard("uz"))
-
-
-@router.message(F.text == "🇬🇧 English")  # БАГ БЫЛ: "🇬🇧/🇺🇸 English" — не совпадало с keyboard
-async def set_en_language(msg: Message):
-    USER_LANGUAGES[msg.from_user.id] = "en"
-    await msg.answer(get_text("language_set_en", "en"), reply_markup=main_menu_keyboard("en"))
-
-
-# ── Кнопка Назад ─────────────────────────────────────────────────────────────
-@router.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga", "⬅️ Back"]))
-async def back_button(msg: Message):
-    language = get_user_language(msg.from_user.id)
-    await msg.answer(get_text("main_menu", language), reply_markup=main_menu_keyboard(language))
-
-
-# ── Вопрос пользователя ───────────────────────────────────────────────────────
-@router.message(F.text)
-async def question_handler(msg: Message):
-    user_id = msg.from_user.id
-    language = get_user_language(user_id)
-    question = msg.text.strip()
-
-    if not question:
-        await msg.answer(get_text("empty_question", language))
-        return
-
-    async with ChatActionSender.typing(bot=msg.bot, chat_id=msg.chat.id):
-        searching_msg = await msg.answer(get_text("searching", language))
-        result = await asyncio.get_event_loop().run_in_executor(
-            None,
-            lambda: process_user_question(question, forced_language=language),
-        )
-        await delete_msg_safely(searching_msg)
-
-    answer = result.get("answer", get_text("error_answer", language))
-    await msg.answer(answer, reply_markup=main_menu_keyboard(language))
-```
+Вот все исправления:
 
 ---
 
-**Итого три исправления:**
-
-| # | Файл | Баг | Фикс |
-|---|---|---|---|
-| 1 | `keyboards.py` | Кнопка `"🇬🇧/🇺🇸 English"` — текст не совпадал с хэндлером | Заменено на `"🇬🇧 English"` везде |
-| 2 | `keyboards.py` | В русском меню не было кнопки `"🔄 Перезапустить"` | Добавлена |
-| 3 | `handlers.py` | `get_text("restart", "language")` — строка вместо переменной | Исправлено на `language` |
-
-После замены этих двух файлов всё должно работать. Также заметь — в `handlers.py` я объединил все кнопки меню в один файл аккуратно, убрал дублирование эмодзи-символов которые рендерились как `ð\x9f\x8c\x90` (это была проблема с кодировкой в Drive).
-
-!!!!!!!!!!
-
-Нашёл папку. Теперь читаю ключевые файлы — `app` папку и файлы Faktura API:Теперь читаю ключевые файлы — `generator.py`, `bot_engine.py` и `api_answer.py`:Отлично, теперь вижу всю картину. Проблема понятна — объясняю и даю фикс.
-
----
-
-**Где именно баг:**
-
-В `api_answer.py` есть опечатка в regex — `r"\b\d{90\b}"` вместо `r"\b\d{9}\b"` — ИНН никогда не находится. И в `direct_formatter.py` функция `format_api_answer_direct` проверяет строку неправильно (`.islower()` возвращает `bool`, а не строку). Из-за этого прямой форматтер всегда возвращает `""`, и управление уходит в Gemini — но промпт там написан так, что модель иногда путается и думает, что запроса не было.
-
-**Решение** — убрать зависимость от Gemini для простых API-ответов и починить баги. Вот исправленные файлы:
-
-**`app/faktura_api/api_answer.py`** — исправлен regex:
+**`app/learning/case_logger.py`** — добавляем `quoting` чтобы многострочные ответы не ломали CSV:
 
 ```python
-import re
+import csv
+from pathlib import Path
+from datetime import datetime
 
-from app.faktura_api.endpoints import (
-    get_document_types,
-    get_document_creation_types,
-    check_company_exists,
-)
-from app.faktura_api.formatter import format_json_context
+BASE_DIR = Path(__file__).resolve().parents[2]
+NEEDS_REVIEW_PATH = BASE_DIR / "data" / "learning" / "needs_review.csv"
 
-
-def extract_inn(question: str) -> str | None:
-    """Ищет 9-значный ИНН в вопросе."""
-    match = re.search(r"\b\d{9}\b", question)  # БАГ БЫЛ ЗДЕСЬ: \d{90\b}
-    if match:
-        return match.group(0)
-    return None
-
-
-def get_api_context(question: str, intent: str) -> tuple[str, list[dict]]:
-
-    if intent == "get_document_types":
-        data = get_document_types()
-        context = format_json_context(data, title="Faktura API result: document types")
-        return context, [{"source": "Faktura API: GetDocumentTypes", "source_type": "api", "api_intent": "get_document_types"}]
-
-    if intent == "get_document_creation_types":
-        data = get_document_creation_types()
-        context = format_json_context(data, title="Faktura API result: document creation types")
-        return context, [{"source": "Faktura API: GetDocumentCreationTypes", "source_type": "api", "api_intent": "get_document_creation_types"}]
-
-    if intent == "check_company_exists":
-        inn = extract_inn(question)
-
-        if not inn:
-            context = "SOURCE: Faktura API\nTITLE: INN check\n\nRESULT:\nПользователь хочет проверить ИНН, но в вопросе не найден 9-значный ИНН.\nПопроси пользователя отправить ИНН в формате 9 цифр."
-            return context, [{"source": "Faktura API: CheckCompanyExist", "source_type": "api", "api_intent": "check_company_exists"}]
-
-        data = check_company_exists(inn)
-
-        context = f"""SOURCE: Faktura API
-TITLE: Company existence check
-
-API_METHOD:
-GET /Api/CheckCompanyExist/{inn}
-
-USER_INN:
-{inn}
-
-RAW_JSON_RESULT:
-{data}
-
-INTERPRETATION_RULE:
-Если RAW_JSON_RESULT равен true — компания зарегистрирована в Faktura.uz.
-Если RAW_JSON_RESULT равен false — компания не найдена или не зарегистрирована.
-Если RAW_JSON_RESULT является объектом JSON — объясни поля простым языком.""".strip()
-
-        return context, [{"source": f"Faktura API: CheckCompanyExist/{inn}", "source_type": "api", "api_intent": "check_company_exists", "inn": inn}]
-
-    return "", []
-```
-
----
-
-**`app/faktura_api/direct_formatter.py`** — полностью переписан, убраны два бага:
-
-```python
-import json
-
-
-def extract_json_from_context(api_context: str):
-    """Извлекает JSON из строки контекста."""
-    if "RAW_JSON_RESULT:" in api_context:
-        json_part = api_context.split("RAW_JSON_RESULT:", 1)[1].strip()
-        json_part = json_part.split("INTERPRETATION_RULE:", 1)[0].strip()
-    elif "JSON:" in api_context:
-        json_part = api_context.split("JSON:", 1)[1].strip()
-    else:
-        return None
-
-    # Сначала проверяем bool как текст (Faktura возвращает true/false)
-    lowered = json_part.lower()
-    if lowered.startswith("true"):
-        return True
-    if lowered.startswith("false"):
-        return False
-
-    try:
-        return json.loads(json_part)
-    except Exception:
-        return None
-
-
-def format_document_types_from_context(api_context: str, language: str = "ru") -> str:
-    data = extract_json_from_context(api_context)
-
-    if not isinstance(data, list):
-        return ""
-
-    if language == "en":
-        lines = ["Available document types in Faktura:"]
-    elif language == "uz":
-        lines = ["Faktura tizimida mavjud hujjat turlari:"]
-    else:
-        lines = ["В Faktura доступны следующие типы документов:"]
-
-    for index, item in enumerate(data, start=1):
-        description = item.get("description", "Без названия")
-        code = item.get("code", "no_code")
-        item_id = item.get("id", "")
-        lines.append(f"{index}. {description} — code: {code}, id: {item_id}")
-
-    return "\n".join(lines)
-
-
-def format_company_check_from_context(api_context: str, language: str = "ru") -> str:
-    data = extract_json_from_context(api_context)
-
-    inn = ""
-    if "USER_INN:" in api_context:
-        inn = api_context.split("USER_INN:", 1)[1].split("\n", 1)[0].strip()
-
-    if data is True:
-        if language == "en":
-            return f"✅ Company with INN {inn} is registered in Faktura.uz."
-        if language == "uz":
-            return f"✅ {inn} INN raqamli kompaniya Faktura.uz tizimida ro'yxatdan o'tgan."
-        return f"✅ Компания с ИНН {inn} зарегистрирована в системе Faktura.uz."
-
-    if data is False:
-        if language == "en":
-            return f"❌ Company with INN {inn} was not found in Faktura.uz."
-        if language == "uz":
-            return f"❌ {inn} INN raqamli kompaniya Faktura.uz tizimida topilmadi."
-        return f"❌ Компания с ИНН {inn} не найдена в системе Faktura.uz."
-
-    if isinstance(data, dict):
-        pretty = json.dumps(data, ensure_ascii=False, indent=2)
-        if language == "en":
-            return f"Faktura API returned data for INN {inn}:\n\n{pretty}"
-        if language == "uz":
-            return f"Faktura API {inn} INN bo'yicha ma'lumot qaytardi:\n\n{pretty}"
-        return f"Faktura API вернул данные по ИНН {inn}:\n\n{pretty}"
-
-    return ""
-
-
-def format_api_answer_direct(
-    question: str,
-    api_context: str,
-    language: str = "ru",
-) -> str:
-    """
-    Пробует сформировать ответ БЕЗ Gemini, напрямую из контекста.
-    Возвращает "" если не получилось — тогда идёт запрос к Gemini.
-    """
-    # Определяем тип ответа по контексту
-    if "GetDocumentTypes" in api_context or "document types" in api_context.lower():
-        return format_document_types_from_context(api_context, language)
-
-    if "CheckCompanyExist" in api_context or "USER_INN:" in api_context:
-        return format_company_check_from_context(api_context, language)
-
-    return ""
-```
-
----
-
-**Что изменилось и почему теперь работает:**
-
-| Проблема | Было | Стало |
-|---|---|---|
-| Regex для ИНН | `\d{90\b}` — никогда не матчит | `\d{9}` — правильно |
-| `format_api_answer_direct` | `.islower()` возвращает `bool` — условие всегда `False` | Проверяет содержимое строки через `in` |
-| `check_company_exists` — ответ `true/false` | Парсился после JSON — падал | Сначала проверяем текст `true/false`, потом `json.loads` |
-| Gemini для простых ответов | Путался, говорил "не могу выполнить" | Прямой форматтер отвечает без Gemini |
-
-
-Всё понятно. Вот план встройки:
-
-Схема работы:
-
-Пользователь отправляет фото
-↓
-handlers.py скачивает фото → base64
-↓
-bot_engine.py: process_user_image()
-↓
-Gemini Vision анализирует скриншот
-↓
-Извлекает текст ошибки / описание
-↓
-Передаёт в обычный RAG pipeline (retrieve_context → generate_answer)
-↓
-Ответ пользователю
-
-
-Три новых/изменённых файла:
-
-app/rag/image_analyzer.py — новый файл, анализ изображения через Gemini:
-
-import base64
-from google import genai
-from google.genai import types
-from app.config import GEMINI_API_KEY
-import time
-
-client = genai.Client(api_key=GEMINI_API_KEY)
-
-GEMINI_MODELS = [
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
+FIELDNAMES = [
+    "case_id",
+    "datetime",
+    "language",
+    "question",
+    "bot_answer",
+    "sources",
+    "status",
+    "reason",
+    "admin_answer",
+    "notes",
 ]
 
 
-def analyze_screenshot(image_bytes: bytes, language: str = "ru") -> dict:
-    """
-    Принимает байты изображения.
-    Возвращает:
-      {
-        "extracted_text": "текст ошибки или описание",
-        "search_query":   "запрос для ChromaDB",
-        "description":    "краткое описание для пользователя",
-      }
-    """
+def format_sources(sources: list[dict] | None) -> str:
+    if not sources:
+        return ""
+    result = []
+    for source in sources:
+        source_name = source.get("source", "unknown")
+        distance = source.get("distance")
+        if distance is not None:
+            result.append(f"{source_name} | distance = {distance}")
+        else:
+            result.append(source_name)
+    return "; ".join(result)
 
-    prompt = f"""
-Ты — AI-ассистент службы поддержки Faktura.uz.
-Пользователь прислал скриншот. Проанализируй изображение.
 
-ЗАДАЧА:
-1. Найди и выпиши дословно любой текст ошибки, сообщения или уведомления на скриншоте.
-2. Если видишь форму, таблицу или интерфейс — опиши кратко что там происходит.
-3. Сформулируй поисковый запрос (1-2 предложения) для поиска в базе знаний Faktura.uz.
+def create_case_id() -> str:
+    return "case_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f")
 
-ЯЗЫК ОТВЕТА: {language}
 
-ФОРМАТ ОТВЕТА (строго JSON):
-{{
-  "extracted_text": "дословный текст с экрана или описание проблемы",
-  "search_query": "краткий запрос для поиска в базе знаний",
-  "description": "одно предложение — что видно на скриншоте"
-}}
+def save_case_for_review(
+    question: str,
+    bot_answer: str,
+    language: str = "unknown",
+    sources: list[dict] | None = None,
+    reason: str = "unknown",
+    notes: str = "",
+) -> str:
 
-Отвечай ТОЛЬКО валидным JSON без markdown-обёртки.
-"""
+    NEEDS_REVIEW_PATH.parent.mkdir(parents=True, exist_ok=True)
+    file_exists = NEEDS_REVIEW_PATH.exists()
 
-    last_error = None
+    # Если файл существует — проверяем есть ли заголовок
+    has_header = False
+    if file_exists:
+        with open(NEEDS_REVIEW_PATH, encoding="utf-8-sig", newline="") as f:
+            first_line = f.readline()
+            has_header = "case_id" in first_line
 
-    for model in GEMINI_MODELS:
-        for attempt in range(2):
-            try:
-                response = client.models.generate_content(
-                    model=model,
-                    contents=[
-                        types.Part.from_bytes(
-                            data=image_bytes,
-                            mime_type="image/jpeg",
-                        ),
-                        prompt,
-                    ],
-                )
+    case_id = create_case_id()
 
-                import json
-                raw = response.text.strip()
-                # убираем ```json если вдруг Gemini добавил
-                raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-                result = json.loads(raw)
-
-                return {
-                    "extracted_text": result.get("extracted_text", ""),
-                    "search_query": result.get("search_query", ""),
-                    "description": result.get("description", ""),
-                }
-
-            except Exception as err:
-                last_error = err
-                print(f"[image_analyzer] model={model}, attempt={attempt + 1}, error={err}")
-                time.sleep(2)
-
-    # если все модели упали — возвращаем пустышку, pipeline продолжится
-    return {
-        "extracted_text": "",
-        "search_query": "",
-        "description": "",
-        "error": str(last_error),
+    row = {
+        "case_id": case_id,
+        "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "language": language,
+        "question": question,
+        # Убираем переносы строк из ответа — они ломают CSV
+        "bot_answer": bot_answer.replace("\n", " ").replace("\r", " ") if bot_answer else "",
+        "sources": format_sources(sources),
+        "status": "needs_review",
+        "reason": reason,
+        "admin_answer": "",
+        "notes": notes.replace("\n", " ") if notes else "",
     }
 
+    with open(NEEDS_REVIEW_PATH, mode="a", encoding="utf-8-sig", newline="") as file:
+        writer = csv.DictWriter(
+            file,
+            fieldnames=FIELDNAMES,
+            quoting=csv.QUOTE_ALL,  # все поля в кавычках — многострочный текст не ломает CSV
+        )
+        if not has_header:
+            writer.writeheader()
 
-app/core/bot_engine.py — добавляем process_user_image() в конец файла:
+        writer.writerow(row)
 
-# ----------- Добавь в конец bot_engine.py -----------
+    return case_id
+```
 
-from app.rag.image_analyzer import analyze_screenshot
+---
+
+**`app/learning/review_manager.py`** — добавляем дату в `approved.csv`:
+
+```python
+import csv
+from pathlib import Path
+from datetime import datetime
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+NEEDS_REVIEW_PATH = BASE_DIR / "data" / "learning" / "needs_review.csv"
+APPROVED_CASES_PATH = BASE_DIR / "data" / "learning" / "approved.csv"
+
+APPROVED_FIELDNAMES = [
+    "case_id",
+    "datetime",       # ← добавлено
+    "language",
+    "question",
+    "approved_answer",
+    "category",
+    "source_type",
+]
 
 
-def process_user_image(
-    image_bytes: bytes,
-    caption: str = "",
-    save_to_csv: bool = True,
-    save_review_cases: bool = True,
-    forced_language: str | None = None,
-) -> dict:
-    """
-    Обрабатывает скриншот от пользователя.
-    1. Gemini Vision извлекает текст/описание с изображения.
-    2. Результат идёт в обычный RAG pipeline.
-    """
+def approve_case_manually(
+    case_id: str,
+    question: str,
+    approved_answer: str,
+    language: str = "ru",
+    category: str = "general",
+) -> None:
 
-    language = forced_language or "ru"
+    APPROVED_CASES_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    # Шаг 1 — анализ изображения
-    try:
-        image_info = analyze_screenshot(image_bytes, language=language)
-    except Exception as error:
-        return {
-            "success": False,
-            "language": language,
-            "question": caption or "[изображение]",
-            "answer": f"Не удалось проанализировать изображение: {error}",
-            "sources": [],
-            "context": "",
-            "sent_to_review": False,
-            "review_case_id": None,
-            "review_reason": None,
-            "image_description": "",
-        }
+    file_exists = APPROVED_CASES_PATH.exists()
 
-    extracted_text = image_info.get("extracted_text", "")
-    search_query = image_info.get("search_query", "")
-    description = image_info.get("description", "")
+    # Проверяем есть ли заголовок
+    has_header = False
+    if file_exists:
+        with open(APPROVED_CASES_PATH, encoding="utf-8-sig", newline="") as f:
+            first_line = f.readline()
+            has_header = "case_id" in first_line
 
-    # Если Gemini вообще ничего не извлёк
-    if not extracted_text and not search_query:
-        no_text_answers = {
-            "ru": "Не смог распознать текст на изображении. Попробуйте описать проблему текстом.",
-            "uz": "Rasmdan matnni tanib bo'lmadi. Muammoni matn orqali tasvirlang.",
-            "en": "Could not extract text from the image. Please describe the issue in text.",
-        }
-        return {
-            "success": False,
-            "language": language,
-            "question": caption or "[изображение]",
-            "answer": no_text_answers.get(language, no_text_answers["ru"]),
-            "sources": [],
-            "context": "",
-            "sent_to_review": False,
-            "review_case_id": None,
-            "review_reason": None,
-            "image_description": description,
-        }
+    row = {
+        "case_id": case_id,
+        "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "language": language,
+        "question": question,
+        "approved_answer": approved_answer.replace("\n", " ").replace("\r", " ") if approved_answer else "",
+        "category": category,
+        "source_type": "admin_review",
+    }
 
-    # Шаг 2 — строим вопрос из caption + извлечённого текста
-    if caption:
-        combined_question = f"{caption}\n\n[Текст со скриншота]: {extracted_text}"
-    else:
-        combined_question = extracted_text
+    with open(APPROVED_CASES_PATH, mode="a", encoding="utf-8-sig", newline="") as file:
+        writer = csv.DictWriter(
+            file,
+            fieldnames=APPROVED_FIELDNAMES,
+            quoting=csv.QUOTE_ALL,
+        )
+        if not has_header:
+            writer.writeheader()
 
-    # Шаг 3 — прогоняем через обычный RAG pipeline
-    rag_result = process_user_question(
-        question=search_query or combined_question,
-        save_to_csv=save_to_csv,
-        save_review_cases=save_review_cases,
-        forced_language=language,
+        writer.writerow(row)
+```
+
+---
+
+**`app/bot/admin_handlers.py`** — исправляем чтение CSV + добавляем управление админами:
+
+```python
+import csv
+from pathlib import Path
+from datetime import datetime
+
+from aiogram import Router, F
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+
+from app.learning.review_manager import approve_case_manually
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+NEEDS_REVIEW_PATH = BASE_DIR / "data" / "learning" / "needs_review.csv"
+APPROVED_CASES_PATH = BASE_DIR / "data" / "learning" / "approved.csv"
+ADMINS_PATH = BASE_DIR / "data" / "admins.txt"
+
+# Начальный админ — всегда имеет доступ
+ROOT_ADMIN_ID = 677539972
+
+router = Router()
+
+
+# ── Управление админами ───────────────────────────────────────────────────────
+def load_admin_ids() -> set[int]:
+    ids = {ROOT_ADMIN_ID}
+    if ADMINS_PATH.exists():
+        with open(ADMINS_PATH, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.isdigit():
+                    ids.add(int(line))
+    return ids
+
+
+def save_admin_ids(ids: set[int]) -> None:
+    ADMINS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # ROOT_ADMIN не сохраняем — он всегда в коде
+    other_ids = ids - {ROOT_ADMIN_ID}
+    with open(ADMINS_PATH, "w", encoding="utf-8") as f:
+        for admin_id in sorted(other_ids):
+            f.write(f"{admin_id}\n")
+
+
+def is_admin(user_id: int) -> bool:
+    return user_id in load_admin_ids()
+
+
+# ── FSM ───────────────────────────────────────────────────────────────────────
+class AdminReview(StatesGroup):
+    waiting_for_answer = State()
+    waiting_for_category = State()
+    waiting_for_new_admin_id = State()
+    waiting_for_remove_admin_id = State()
+
+
+ADMIN_SESSION: dict[int, dict] = {}
+
+
+# ── Клавиатуры ────────────────────────────────────────────────────────────────
+def admin_main_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📋 Кейсы на проверку")],
+            [KeyboardButton(text="📊 Статистика"), KeyboardButton(text="👥 Управление админами")],
+            [KeyboardButton(text="🚪 Выйти из панели")],
+        ],
+        resize_keyboard=True,
     )
 
-    # Добавляем описание скриншота к ответу
-    if description:
-        prefix_map = {
-            "ru": f"🖼 *На скриншоте:* {description}\n\n",
-            "uz": f"🖼 *Skrinshot:* {description}\n\n",
-            "en": f"🖼 *Screenshot:* {description}\n\n",
-        }
-        prefix = prefix_map.get(language, prefix_map["ru"])
-        rag_result["answer"] = prefix + rag_result["answer"]
 
-    rag_result["image_description"] = description
-    return rag_result
-
-
-app/bot/handlers.py — добавляем хэндлер фото в конец файла:
-
-# ----------- Добавь в конец handlers.py -----------
-
-from aiogram.types import PhotoSize
-from app.core.bot_engine import process_user_image
-
-
-@router.message(F.photo)
-async def photo_handler(msg: Message):
-    """Обрабатывает скриншоты и фотографии от пользователя."""
-
-    user_id = msg.from_user.id
-    language = get_user_language(user_id)
-
-    # Берём фото в наилучшем качестве (последний элемент = самый большой)
-    photo: PhotoSize = msg.photo[-1]
-    caption: str = msg.caption or ""
-
-    # Показываем "ищу..."
-    search_message = await msg.answer(
-        get_text("searching", language),
-        reply_markup=main_menu_keyboard(language),
+def review_action_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="✅ Одобрить"), KeyboardButton(text="⏭ Следующий")],
+            [KeyboardButton(text="❌ Отклонить"), KeyboardButton(text="📋 Все кейсы")],
+            [KeyboardButton(text="🚪 Выйти из панели")],
+        ],
+        resize_keyboard=True,
     )
 
-    try:
-        async with ChatActionSender.typing(bot=msg.bot, chat_id=msg.chat.id):
 
-            # Скачиваем фото в байты
-            file = await msg.bot.get_file(photo.file_id)
-            file_bytes = await msg.bot.download_file(file.file_path)
-            image_bytes: bytes = file_bytes.read()
+def cancel_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="❌ Отмена")]],
+        resize_keyboard=True,
+    )
 
-            # Запускаем обработку в отдельном потоке
-            result = await asyncio.to_thread(
-                process_user_image,
-                image_bytes,
-                caption,
-                True,
-                True,
-                language,
-            )
 
-    finally:
-        await delete_msg_safely(search_message)
+def admins_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="➕ Добавить админа")],
+            [KeyboardButton(text="➖ Удалить админа"), KeyboardButton(text="📋 Список админов")],
+            [KeyboardButton(text="⬅️ Назад в панель")],
+        ],
+        resize_keyboard=True,
+    )
 
-    answer = result.get("answer", get_text("error_answer", language))
-    sources = result.get("sources", [])
-    sent_to_review = result.get("sent_to_review")
-    review_case_id = result.get("review_case_id")
 
-    final_text = answer
+# ── Чтение needs_review.csv ───────────────────────────────────────────────────
+def load_pending_cases() -> list[dict]:
+    if not NEEDS_REVIEW_PATH.exists():
+        return []
 
-    if sources and isinstance(sources, list):
-        unique_sources: list[str] = []
-        for source_item in sources:
-            source_name = str(source_item.get("source", "unknown")) if isinstance(source_item, dict) else str(source_item)
-            if source_name not in unique_sources:
-                unique_sources.append(source_name)
+    cases = []
+    with open(NEEDS_REVIEW_PATH, encoding="utf-8-sig", newline="") as file:
+        content = file.read()
 
-        sources_text = "\n".
-        join(f"— {s}" for s in unique_sources[:3])
-        final_text += f"\n\n{get_text('sources', language)}\n{sources_text}"
+    # Проверяем есть ли заголовок
+    if "case_id" not in content.split("\n")[0]:
+        # Заголовка нет — файл сломан, возвращаем пустой список
+        return []
 
-    if sent_to_review:
-        final_text += f"\n\n{get_text('saved_review', language)} {review_case_id}"
+    import io
+    reader = csv.DictReader(io.StringIO(content), quoting=csv.QUOTE_ALL)
+    for row in reader:
+        if row.get("status", "").strip() == "needs_review":
+            cases.append(dict(row))
 
+    return cases
+
+
+def mark_case_as_reviewed(case_id: str, new_status: str) -> None:
+    if not NEEDS_REVIEW_PATH.exists():
+        return
+
+    rows = []
+    fieldnames = None
+
+    with open(NEEDS_REVIEW_PATH, encoding="utf-8-sig", newline="") as file:
+        reader = csv.DictReader(file, quoting=csv.QUOTE_ALL)
+        fieldnames = reader.fieldnames
+        for row in reader:
+            if row.get("case_id") == case_id:
+                row["status"] = new_status
+            rows.append(row)
+
+    if not fieldnames:
+        return
+
+    with open(NEEDS_REVIEW_PATH, "w", encoding="utf-8-sig", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def get_stats() -> dict:
+    stats = {"pending": 0, "approved": 0, "rejected": 0, "skipped": 0}
+
+    if NEEDS_REVIEW_PATH.exists():
+        with open(NEEDS_REVIEW_PATH, encoding="utf-8-sig", newline="") as file:
+            for row in csv.DictReader(file, quoting=csv.QUOTE_ALL):
+                status = row.get("status", "").strip()
+                if status == "needs_review":
+                    stats["pending"] += 1
+                elif status == "rejected":
+                    stats["rejected"] += 1
+                elif status == "skipped":
+                    stats["skipped"] += 1
+
+    if APPROVED_CASES_PATH.exists():
+        with open(APPROVED_CASES_PATH, encoding="utf-8-sig", newline="") as file:
+            stats["approved"] = sum(1 for _ in csv.DictReader(file))
+
+    return stats
+
+
+def format_case_message(case: dict, index: int, total: int) -> str:
+    lang_emoji = {"ru": "🇷🇺", "uz": "🇺🇿", "en": "🇬🇧"}.get(case.get("language", "ru"), "🌐")
+    reason_map = {
+        "weak_source_distance": "слабый контекст",
+        "weak_answer_text": "слабый ответ",
+        "empty_context": "нет контекста",
+        "no_sources": "нет источников",
+        "retriever_or_api_error": "ошибка поиска",
+        "generator_error": "ошибка генерации",
+    }
+    reason = reason_map.get(case.get("reason", ""), case.get("reason", "—"))
+
+    # Обрезаем длинный ответ бота чтобы не спамить
+    bot_answer = case.get("bot_answer", "—")
+    if len(bot_answer) > 300:
+        bot_answer = bot_answer[:300] + "..."
+
+    return (
+        f"📌 *Кейс {index}/{total}*\n"
+        f"🆔 `{case.get('case_id', '—')}`\n"
+        f"🕐 {case.get('datetime', '—')}\n"
+        f"{lang_emoji} Язык: `{case.get('language', '—')}`\n"
+        f"⚠️ Причина: `{reason}`\n"
+        f"───────────────────\n"
+        f"❓ *Вопрос:*\n{case.get('question', '—')}\n"
+        f"───────────────────\n"
+        f"🤖 *Ответ бота:*\n{bot_answer}\n"
+        f"───────────────────\n"
+        f"📎 Источники: `{case.get('sources', 'нет')[:100]}`"
+    )
+
+
+# ── /admin ────────────────────────────────────────────────────────────────────
+@router.message(Command("admin"))
+async def admin_panel_handler(msg: Message, state: FSMContext):
+    if not is_admin(msg.from_user.id):
+        await msg.answer("⛔ У вас нет доступа к этой команде.")
+        return
+    await state.clear()
+    pending = load_pending_cases()
     await msg.answer(
-        final_text,
-        reply_markup=main_menu_keyboard(language),
+        f"👨‍💼 *Добро пожаловать в админ-панель!*\n\n"
+        f"📋 Кейсов на проверку: *{len(pending)}*\n\n"
+        f"Выберите действие:",
+        reply_markup=admin_main_keyboard(),
         parse_mode="Markdown",
     )
 
 
-Итого что добавили:
+# ── Выход ─────────────────────────────────────────────────────────────────────
+@router.message(F.text.in_(["🚪 Выйти из панели", "⬅️ Назад в панель"]))
+async def exit_admin_panel(msg: Message, state: FSMContext):
+    if not is_admin(msg.from_user.id):
+        return
+    await state.clear()
+    ADMIN_SESSION.pop(msg.from_user.id, None)
+
+    if msg.text == "⬅️ Назад в панель":
+        pending = load_pending_cases()
+        await msg.answer(
+            f"👨‍💼 *Админ-панель*\n\nКейсов на проверку: *{len(pending)}*",
+            reply_markup=admin_main_keyboard(),
+            parse_mode="Markdown",
+        )
+        return
+
+    from app.bot.keyboards import main_menu_keyboard
+    await msg.answer("Вы вышли из админ-панели.", reply_markup=main_menu_keyboard("ru"))
 
 
+# ── Статистика ────────────────────────────────────────────────────────────────
+@router.message(F.text == "📊 Статистика")
+async def stats_handler(msg: Message):
+    if not is_admin(msg.from_user.id):
+        return
+    stats = get_stats()
+    await msg.answer(
+        f"📊 *Статистика базы знаний*\n\n"
+        f"⏳ Ожидают проверки: *{stats['pending']}*\n"
+        f"✅ Одобрено: *{stats['approved']}*\n"
+        f"❌ Отклонено: *{stats['rejected']}*\n"
+        f"⏭ Пропущено: *{stats['skipped']}*",
+        reply_markup=admin_main_keyboard(),
+        parse_mode="Markdown",
+    )
 
-|Файл                       |Что сделали                                                  |
-|---------------------------|-------------------------------------------------------------|
-|`app/rag/image_analyzer.py`|Новый — Gemini Vision извлекает текст/ошибку со скриншота    |
-|`app/core/bot_engine.py`   |Новая функция process_user_image() — склеивает Vision + RAG|
-|`app/bot/handlers.py`      |Новый хэндлер @router.message(F.photo) — принимает фото    |
 
-Пользователь может теперь:
-
- • Прислать скриншот без подписи — бот сам поймёт что на экране
- • Прислать скриншот с подписью — например "вот ошибка при входе" — бот учтёт оба контекста
+# ── Управление админами ───────────────────────────────────────────────────────
+@router.message(F.text == "👥 Управление админами")
+async def manage_admins(msg: Message, state: FSMContext):
+    if not is_admin(msg.from_user.id):
+        return
+    await state.clear()
+    await msg.answer("👥 *Управление администраторами*", reply_markup=admins_keyboard(), parse_mode="Markdown")
 
 
+@router.message(F.text == "📋 Список админов")
+async def list_admins(msg: Message):
+    if not is_admin(msg.from_user.id):
+        return
+    ids = load_admin_ids()
+    lines = [f"👑 `{ROOT_ADMIN_ID}` — главный админ"]
+    for admin_id in sorted(ids):
+        if admin_id != ROOT_ADMIN_ID:
+            lines.append(f"👤 `{admin_id}`")
+    await msg.answer(
+        f"📋 *Список администраторов:*\n\n" + "\n".join(lines),
+        reply_markup=admins_keyboard(),
+        parse_mode="Markdown",
+    )
 
 
+@router.message(F.text == "➕ Добавить админа")
+async def add_admin_start(msg: Message, state: FSMContext):
+    if not is_admin(msg.from_user.id):
+        return
+    await msg.answer(
+        "Отправьте Telegram *user_id* нового администратора.\n\n"
+        "Узнать ID можно через @userinfobot",
+        reply_markup=cancel_keyboard(),
+        parse_mode="Markdown",
+    )
+    await state.set_state(AdminReview.waiting_for_new_admin_id)
 
+
+@router.message(AdminReview.waiting_for_new_admin_id, F.text == "❌ Отмена")
+async def cancel_add_admin(msg: Message, state: FSMContext):
+    await state.clear()
+    await msg.answer("Отменено.", reply_markup=admins_keyboard())
+
+
+@router.message(AdminReview.waiting_for_new_admin_id, F.text)
+async def add_admin_confirm(msg: Message, state: FSMContext):
+    if not is_admin(msg.from_user.id):
+        return
+    text = msg.text.strip()
+    if not text.isdigit():
+        await msg.answer("❌ Введите числовой Telegram ID (только цифры).")
+        return
+    new_id = int(text)
+    ids = load_admin_ids()
+    if new_id in ids:
+        await msg.answer(f"⚠️ Пользователь `{new_id}` уже является админом.", parse_mode="Markdown")
+    else:
+        ids.add(new_id)
+        save_admin_ids(ids)
+        await msg.answer(f"✅ Пользователь `{new_id}` добавлен как администратор.", parse_mode="Markdown")
+    await state.clear()
+    await msg.answer("Выберите действие:", reply_markup=admins_keyboard())
+
+
+@router.message(F.text == "➖ Удалить админа")
+async def remove_admin_start(msg: Message, state: FSMContext):
+    if not is_admin(msg.from_user.id):
+        return
+    ids = load_admin_ids()
+    removable = ids - {ROOT_ADMIN_ID}
+    if not removable:
+        await msg.answer("Нет дополнительных администраторов для удаления.")
+        return
+    lines = "\n".join(f"• `{i}`" for i in sorted(removable))
+    await msg.answer(
+        f"Отправьте ID админа для удаления:\n\n{lines}",
+        reply_markup=cancel_keyboard(),
+        parse_mode="Markdown",
+    )
+    await state.set_state(AdminReview.waiting_for_remove_admin_id)
+
+
+@router.message(AdminReview.waiting_for_remove_admin_id, F.text == "❌ Отмена")
+async def cancel_remove_admin(msg: Message, state: FSMContext):
+    await state.clear()
+    await msg.answer("Отменено.", reply_markup=admins_keyboard())
+
+
+@router.message(AdminReview.waiting_for_remove_admin_id, F.text)
+async def remove_admin_confirm(msg: Message, state: FSMContext):
+    if not is_admin(msg.from_user.id):
+        return
+    text = msg.text.strip()
+    if not text.isdigit():
+        await msg.answer("❌ Введите числовой Telegram ID.")
+        return
+    remove_id = int(text)
+    if remove_id == ROOT_ADMIN_ID:
+        await msg.answer("⛔ Нельзя удалить главного администратора.")
+        await state.clear()
+        return
+    ids = load_admin_ids()
+    if remove_id not in ids:
+        await msg.answer(f"⚠️ Пользователь `{remove_id}` не найден в списке.", parse_mode="Markdown")
+    else:
+        ids.discard(remove_id)
+        save_admin_ids(ids)
+        await msg.answer(f"✅ Пользователь `{remove_id}` удалён из администраторов.", parse_mode="Markdown")
+    await state.clear()
+    await msg.answer("Выберите действие:", reply_markup=admins_keyboard())
+
+
+# ── Просмотр кейсов ───────────────────────────────────────────────────────────
+@router.message(F.text.in_(["📋 Кейсы на проверку", "📋 Все кейсы"]))
+async def start_review(msg: Message, state: FSMContext):
+    if not is_admin(msg.from_user.id):
+        return
+    cases = load_pending_cases()
+    if not cases:
+        await msg.answer("✅ Все кейсы проверены, очередь пуста.", reply_markup=admin_main_keyboard())
+        return
+    ADMIN_SESSION[msg.from_user.id] = {"cases": cases, "index": 0}
+    await send_current_case(msg, state)
+
+
+async def send_current_case(msg: Message, state: FSMContext):
+    session = ADMIN_SESSION.get(msg.from_user.id)
+    if not session:
+        return
+    cases = session["cases"]
+    index = session["index"]
+    if index >= len(cases):
+        await msg.answer("✅ Все кейсы просмотрены!", reply_markup=admin_main_keyboard())
+        ADMIN_SESSION.pop(msg.from_user.id, None)
+        await state.clear()
+        return
+    case = cases[index]
+    text = format_case_message(case, index + 1, len(cases))
+    await msg.answer(text, reply_markup=review_action_keyboard(), parse_mode="Markdown")
+
+
+@router.message(F.text == "✅ Одобрить")
+async def approve_start(msg: Message, state: FSMContext):
+    if not is_admin(msg.from_user.id):
+        return
+    session = ADMIN_SESSION.get(msg.from_user.id)
+    if not session:
+        await msg.answer("Сначала откройте кейсы: «📋 Кейсы на проверку»")
+        return
+    case = session["cases"][session["index"]]
+    await msg.answer(
+        f"✏️ *Напишите правильный ответ* для вопроса:\n\n_{case.get('question', '')}_",
+        reply_markup=cancel_keyboard(),
+        parse_mode="Markdown",
+    )
+    await state.set_state(AdminReview.waiting_for_answer)
+
+
+@router.message(AdminReview.waiting_for_answer, F.text == "❌ Отмена")
+async def cancel_approve(msg: Message, state: FSMContext):
+    await state.clear()
+    await msg.answer("Отменено.", reply_markup=review_action_keyboard())
+
+
+@router.message(AdminReview.waiting_for_answer, F.text)
+async def receive_admin_answer(msg: Message, state: FSMContext):
+    if not is_admin(msg.from_user.id):
+        return
+    await state.update_data(admin_answer=msg.text.strip())
+    await state.set_state(AdminReview.waiting_for_category)
+    await msg.answer(
+        "📂 *Укажите категорию:*",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="login"), KeyboardButton(text="registration")],
+                [KeyboardButton(text="edo"), KeyboardButton(text="invoice")],
+                [KeyboardButton(text="password"), KeyboardButton(text="general")],
+                [KeyboardButton(text="⏩ Пропустить категорию")],
+            ],
+            resize_keyboard=True,
+        ),
+        parse_mode="Markdown",
+    )
+
+
+@router.message(AdminReview.waiting_for_category, F.text)
+async def receive_category(msg: Message, state: FSMContext):
+    if not is_admin(msg.from_user.id):
+        return
+    session = ADMIN_SESSION.get(msg.from_user.id)
+    if not session:
+        await state.clear()
+        return
+    data = await state.get_data()
+    admin_answer = data.get("admin_answer", "")
+    case = session["cases"][session["index"]]
+    category = "general" if msg.text.strip() == "⏩ Пропустить категорию" else msg.text.strip().lower()
+
+    approve_case_manually(
+        case_id=case.get("case_id", f"manual_{datetime.now().strftime('%Y%m%d_%H%M%S')}"),
+        question=case.get("question", ""),
+        approved_answer=admin_answer,
+        language=case.get("language", "ru"),
+        category=category,
+    )
+    mark_case_as_reviewed(case.get("case_id", ""), "approved")
+    await state.clear()
+
+    session["index"] += 1
+    remaining = len(session["cases"]) - session["index"]
+
+    await msg.answer(
+        f"✅ *Сохранено!* Категория: `{category}` | Осталось: *{remaining}*",
+        reply_markup=review_action_keyboard(),
+        parse_mode="Markdown",
+    )
+    if remaining == 0:
+        await msg.answer("🎉 Все кейсы проверены!", reply_markup=admin_main_keyboard())
+        ADMIN_SESSION.pop(msg.from_user.id, None)
+    else:
+        await send_current_case(msg, state)
+
+
+@router.message(F.text == "⏭ Следующий")
+async def skip_case(msg: Message, state: FSMContext):
+    if not is_admin(msg.from_user.id):
+        return
+    session = ADMIN_SESSION.get(msg.from_user.id)
+    if not session:
+        return
+    case = session["cases"][session["index"]]
+    mark_case_as_reviewed(case.get("case_id", ""), "skipped")
+    session["index"] += 1
+    await send_current_case(msg, state)
+
+
+@router.message(F.text == "❌ Отклонить")
+async def reject_case(msg: Message, state: FSMContext):
+    if not is_admin(msg.from_user.id):
+        return
+    session = ADMIN_SESSION.get(msg.from_user.id)
+    if not session:
+        return
+    case = session["cases"][session["index"]]
+    mark_case_as_reviewed(case.get("case_id", ""), "rejected")
+    session["index"] += 1
+    await msg.answer("❌ Кейс отклонён.", reply_markup=review_action_keyboard())
+    await send_current_case(msg, state)
+```
+
+---
+
+**Последний шаг — почини существующий `needs_review.csv`** вручную. Открой его в VS Code и добавь первой строкой:
+
+```
+case_id,datetime,language,question,bot_answer,sources,status,reason,admin_answer,notes
+```
+
+Или запусти этот одноразовый скрипт:
+
+```python
+# fix_csv_header.py — запусти один раз из корня проекта
+from pathlib import Path
+
+path = Path("data/learning/needs_review.csv")
+content = path.read_text(encoding="utf-8-sig")
+
+header = "case_id,datetime,language,question,bot_answer,sources,status,reason,admin_answer,notes\n"
+
+if "case_id" not in content.split("\n")[0]:
+    path.write_text(header + content, encoding="utf-8-sig")
+    print("Заголовок добавлен!")
+else:
+    print("Заголовок уже есть.")
+```
+
+```bash
+python fix_csv_header.py
+```
+
+---
+
+**Итого что исправлено:**
+
+| # | Проблема | Решение |
+|---|---|---|
+| 1 | Кейсы не отображались | `load_pending_cases` теперь проверяет наличие заголовка |
+| 2 | Многострочные ответы ломали CSV | `quoting=csv.QUOTE_ALL` + убираем `\n` из полей |
+| 3 | Нет даты в `approved.csv` | Добавлено поле `datetime` |
+| 4 | Добавление/удаление админов | Хранятся в `data/admins.txt`, кнопка «👥 Управление админами» |
 
 
 
