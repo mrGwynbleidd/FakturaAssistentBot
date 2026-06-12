@@ -182,6 +182,7 @@ def format_case_message(case: dict, index: int, total: int) -> str:
         "no_sources": "нет источников",
         "retriever_or_api_error": "ошибка поиска",
         "generator_error": "ошибка генерации",
+        "image_unrecognized": "📷 фото не распознано",
     }
     reason = reason_map.get(case.get("reason", ""), case.get("reason", "—"))
 
@@ -457,9 +458,16 @@ async def approve_start(msg: Message, state: FSMContext):
         await msg.answer("Сначала откройте кейсы: «📋 Кейсы на проверку»")
         return
     case = session["cases"][session["index"]]
-    
+    #get any function!
+    is_image_case = case.get("reason") == "image_unrecognized"
+    hint = (
+        "\n\n📷 <i>Это фото, которое бот не смог распознать. "
+        "Опишите что на нём и дайте ответ — это попадёт в базу знаний.</i>"
+        if is_image_case else ""
+    )
     await msg.answer(
-        f"✏️ <b>Напишите правильный ответ</b> для вопроса:\n\n<i>{html.escape(case.get('question', ''))}</i>",
+        f"✏️ <b>Напишите правильный ответ</b> для вопроса:\n\n"
+        f"<i>{html.escape(case.get('question', ''))}</i>{hint}",
         reply_markup=cancel_keyboard(),
         parse_mode="HTML",
     )
