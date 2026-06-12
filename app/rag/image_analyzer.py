@@ -16,7 +16,7 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 GEMINI_MODELS = [
     "gemini-2.5-flash",
-    "gemini-2.0-flash",
+    "gemini-2.5-flash-lite",
 ]
 
 
@@ -93,7 +93,7 @@ def analyze_sceenshot(image_bytes: bytes, language: str = "ru") -> dict:
         try:
             clean = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
             result = json.loads(clean)
-            
+
             if not isinstance(result, dict):
                 result = {}
             
