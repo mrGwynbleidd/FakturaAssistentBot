@@ -92,20 +92,15 @@ def analyze_sceenshot(image_bytes: bytes, language: str = "ru") -> dict:
     if raw:
         try:
             clean = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-            result = json.load(clean)
-            # data = json.loads(clean)
-            # with open("data.json", 'r') as file:
-            #     result = json.load(file)
-
-            # extracted1 = result['extraced_text']
-            # search_query1= result['search_query']
-            # description1 = result['description']
-
+            result = json.loads(clean)
+            
+            if not isinstance(result, dict):
+                result = {}
             
             #get - any function!
-            extracted = result.get("extracted_text", "").strip()
-            search_query = result.get("search_query", "").strip()
-            description = result.get("description", "").strip()
+            extracted = (result.get("extracted_text") or  "").strip()
+            search_query = (result.get("search_query") or "").strip()
+            description = (result.get("description") or "").strip()
 
             if search_query or extracted or description:
                 log.info(f"📷 Фото распознано (Stage 1): {description[:60]}")
