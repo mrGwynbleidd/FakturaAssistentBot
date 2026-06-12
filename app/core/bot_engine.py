@@ -292,23 +292,41 @@ def process_user_image(
     effective_query = search_query or extracted_text or description
 
     if not effective_query:
+        if gemini_error:
+            log.warning(f"Gemini image error: {gemini_error}")
         no_text_answer = {
             "ru": "Не смог распознать содержимое изображения. Опишите проблему текстом.",
             "uz": "Rasmdan matnni tanib bo'lmadi. Muammoni matn orqali tasvirlang.",
             "en": "Could not extract content from the image. Please describe the issue in text.",
         }
-        if gemini_error:
-            log.warning(f"Gemini image error: {gemini_error}")
+        # Save to review so admin can manually describe it →
+        # that description gets indexed and helps with similar future images
+        review_case_id = None
+        if save_review_cases:
+            try:
+                review_case_id = save_case_for_review(
+                    question=caption or "[изображение без текста]",
+                    bot_answer=no_text_answer.get(language, no_text_answer["ru"]),
+                    language=language,
+                    sources=[],
+                    reason="image_unrecognized",
+                    notes="Gemini не смог извлечь текст или описание из фото. "
+                          "Опишите вручную что на изображении и дайте правильный ответ.",
+                )
+                log.info(f"📝 Нераспознанное фото сохранено на проверку ({review_case_id})")
+            except Exception as err:
+                log.warning(f"Could not save image review case: {err}")
+
         return {
             "success": False,
             "language": language,
             "question": caption or "[изображение]",
             "answer": no_text_answer.get(language, no_text_answer["ru"]),
             "sources": [], "context": "",
-            "sent_to_review": False,
-            "review_case_id": None,
-            "review_reason": None,
-            "image_description": description,
+            "sent_to_review": review_case_id is not None,
+            "review_case_id": review_case_id,
+            "review_reason": "image_unrecognized",
+            "image_description": "",
         }
 
     # build the question for the RAG pipeline
