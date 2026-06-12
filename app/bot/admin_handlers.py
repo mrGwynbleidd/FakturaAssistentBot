@@ -77,7 +77,7 @@ def review_action_keyboard() -> ReplyKeyboardMarkup:
         keyboard=[
             [KeyboardButton(text="✅ Написать ответ"), KeyboardButton(text="⏭ Следующий")],
             [KeyboardButton(text="❌ Отклонить"), KeyboardButton(text="📋 Все кейсы")],
-            [KeyboardButton(text="🚪 Выйти из панели")],
+            [KeyboardButton(text="🔙 Назад в панель")],
         ],
         resize_keyboard=True,
     )
@@ -152,7 +152,7 @@ def mark_case_as_reviewed(case_id: str, new_status: str) -> None:
 
 
 def get_stats() -> dict:
-    # БАГ БЫЛ ЗДЕСЬ: ключ "pendind" вместо "pending" — KeyError при выводе статистики
+    #ключ "pendind" вместо "pending" — KeyError при выводе статистики
     stats = {"pending": 0, "approved": 0, "rejected": 0, "skipped": 0}
 
     if NEEDS_REVIEW_PATH.exists():
@@ -475,7 +475,7 @@ async def approve_start(msg: Message, state: FSMContext):
 
 
 
-# БАГ БЫЛ ЗДЕСЬ: cancel_approve выполнял логику одобрения вместо отмены
+# cancel_approve выполнял логику одобрения вместо отмены
 @router.message(AdminReview.waiting_for_answer, F.text == "❌ Отмена")
 async def cancel_approve(msg: Message, state: FSMContext):
     await state.clear()
