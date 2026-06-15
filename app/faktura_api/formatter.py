@@ -3,21 +3,21 @@
 import json
 
 #convert json-response into context for LLM
-def format_json_context(data: dict | list, title: str = "Faktura API Response") -> str:
+def format_json_context(
+    data: dict | list,
+    title: str = "Faktura API Response",
+    extra_hint: str = "",
+) -> str:
 
-    pretty_json = json.dumps(
-        data,
-        ensure_ascii=False,
-        indent=2,
-    )
+    pretty_json = json.dumps(data, ensure_ascii=False, indent=2)
 
-    return  f"""
-SOURCE: Faktura API
-TITLE: {title}
+    hint_block = f"\nHINT: {extra_hint}" if extra_hint else ""
+
+    return f"""SOURCE: Faktura API
+TITLE: {title}{hint_block}
 
 JSON:
-{pretty_json}
-""".strip()
+{pretty_json}""".strip()
 
 
 #convert doc type

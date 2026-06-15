@@ -8,7 +8,8 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.utils.chat_action import ChatActionSender
 
 from app.core.bot_engine import process_user_question
-from app.bot.keyboards import  main_menu_keyboard, language_keyboard
+from app.bot.keyboards import main_menu_keyboard, language_keyboard
+from app.bot.markdown_utils import safe_markdown_answer
 
 from app.bot.texts import get_text
 
@@ -331,11 +332,19 @@ async def question_handler(msg: Message):
 
     #####
 
-    await msg.answer(
-        final_text,
-        reply_markup=main_menu_keyboard(language),
-    )
+    final_text = safe_markdown_answer(final_text)
 
+    try:
+        await msg.answer(
+            final_text,
+            reply_markup=main_menu_keyboard(language),
+            parse_mode="Markdown",
+        )
+    except Exception:
+        # fallback: отправить без форматирования если Markdown сломан
+        import re as _re
+        plain = _re.sub(r'[*_`]', '', final_text)
+        await msg.answer(plain, reply_markup=main_menu_keyboard(language))
 
 
 from aiogram.types import PhotoSize
@@ -390,9 +399,16 @@ async def photo_handler(msg: Message):
     if sent_to_review:
         final_text += f"\n\n{get_text('saved_review', language)} {review_case_id}"
 
-    await msg.answer(
-        final_text,
-        reply_markup=main_menu_keyboard(language),
-        parse_mode="Markdown",
-    )
+    final_text = safe_markdown_answer(final_text)
+
+    try:
+        await msg.answer(
+            final_text,
+            reply_markup=main_menu_keyboard(language),
+            parse_mode="Markdown",
+        )
+    except Exception:
+        import re as _re
+        plain = _re.sub(r'[*_`]', '', final_text)
+        await msg.answer(plain, reply_markup=main_menu_keyboard(language))
 

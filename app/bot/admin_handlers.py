@@ -1,16 +1,20 @@
+#import libs
 import csv
 import html
 from pathlib import Path
 from datetime import datetime
 
+#import tg libs
 from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
+#import functions
 from app.learning.review_manager import approve_case_manually
 
+#dir path
 BASE_DIR = Path(__file__).resolve().parents[2]
 NEEDS_REVIEW_PATH = BASE_DIR / "data" / "learning" / "needs_review.csv"
 APPROVED_CASES_PATH = BASE_DIR / "data" / "learning" / "approved.csv"
@@ -24,26 +28,32 @@ router = Router()
 # control admins
 def load_admin_ids() -> set[    int]:
     ids: set[int] = set()
+    #add main admin id
     if ROOT_ADMIN_ID:
         ids.add(ROOT_ADMIN_ID)
+    #if file created
     if ADMINS_PATH.exists():
         with open(ADMINS_PATH, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if line.isdigit():
                     ids.add(int(line))
-
+    #return set of ids
     return ids
 
+#save new admin id
 def save_admin_ids(ids: set[int]) -> None:
+    
     ADMINS_PATH.parent.mkdir(parents=True, exist_ok=True)
 
+    
     other_ids = ids - {ROOT_ADMIN_ID}
+    #write new ids in txt
     with open(ADMINS_PATH, "w", encoding="utf-8") as file:
         for admin_id in sorted(other_ids):
             file.write(f"{admin_id}\n")
 
-
+#check is user admin
 def is_admin(user_id: int) -> bool:
     return user_id in load_admin_ids()            
 
@@ -59,7 +69,7 @@ class AdminReview(StatesGroup):
 ADMIN_SESSION: dict[int, dict] = {}
 
 
-
+#main admin keyboard
 def admin_main_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -72,6 +82,7 @@ def admin_main_keyboard() -> ReplyKeyboardMarkup:
     )
 
 
+#review cases keyboard
 def review_action_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -82,13 +93,14 @@ def review_action_keyboard() -> ReplyKeyboardMarkup:
         resize_keyboard=True,
     )
 
-
+#cancel button in  keyboard
 def cancel_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text="❌ Отмена")]],
         resize_keyboard=True,
     )
 
+#control admin keyboard
 def admins_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -120,6 +132,8 @@ def load_pending_cases() -> list[dict]:
         if row.get("status", "").strip() == "needs_review":
             cases.append(dict(row))
 
+    # critical sync mismatch cases bubble to top
+    cases.sort(key=lambda c: 0 if c.get("reason") == "sync_mismatch_critical" else 1)
 
     return cases
 
@@ -183,8 +197,10 @@ def format_case_message(case: dict, index: int, total: int) -> str:
         "retriever_or_api_error": "ошибка поиска",
         "generator_error": "ошибка генерации",
         "image_unrecognized": "📷 фото не распознано",
+        "sync_mismatch_critical": "🚨 КРИТИЧНО: расхождение статусов Faktura ↔ Солик",
     }
     reason = reason_map.get(case.get("reason", ""), case.get("reason", "—"))
+    is_critical = case.get("reason", "") == "sync_mismatch_critical"
 
     # cut long bot answer
     bot_answer = case.get("bot_answer", "-")
@@ -201,8 +217,9 @@ def format_case_message(case: dict, index: int, total: int) -> str:
     first_source = sources_raw.split(";")[0].strip()
     sources_escaped = html.escape(first_source)
 
+    header = "🚨 <b>КРИТИЧЕСКИЙ КЕЙС</b> " if is_critical else "📌 "
     return (
-        f"📌 <b>Кейс {index}/{total}</b>\n"
+        f"{header}<b>Кейс {index}/{total}</b>\n"
         f"🆔 <code>{case_id_escaped}</code>\n"
         f"🕐 {html.escape(case.get('datetime', '—'))}\n"
         f"{lang_emoji} Язык: <code>{html.escape(case.get('language', '—'))}</code>\n"
@@ -458,13 +475,21 @@ async def approve_start(msg: Message, state: FSMContext):
         await msg.answer("Сначала откройте кейсы: «📋 Кейсы на проверку»")
         return
     case = session["cases"][session["index"]]
-    #get any function!
     is_image_case = case.get("reason") == "image_unrecognized"
-    hint = (
-        "\n\n📷 <i>Это фото, которое бот не смог распознать. "
-        "Опишите что на нём и дайте ответ — это попадёт в базу знаний.</i>"
-        if is_image_case else ""
-    )
+    is_sync_critical = case.get("reason") == "sync_mismatch_critical"
+    if is_image_case:
+        hint = (
+            "\n\n📷 <i>Это фото, которое бот не смог распознать. "
+            "Опишите что на нём и дайте ответ — это попадёт в базу знаний.</i>"
+        )
+    elif is_sync_critical:
+        hint = (
+            "\n\n🚨 <b>КРИТИЧНО:</b> <i>Расхождение статусов между Faktura и Солик. "
+            "Проверьте документ вручную. Ответ должен содержать: "
+            "что было сделано для устранения расхождения.</i>"
+        )
+    else:
+        hint = ""
     await msg.answer(
         f"✏️ <b>Напишите правильный ответ</b> для вопроса:\n\n"
         f"<i>{html.escape(case.get('question', ''))}</i>{hint}",

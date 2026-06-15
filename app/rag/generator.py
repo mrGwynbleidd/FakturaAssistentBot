@@ -24,7 +24,13 @@ def generate_answer(question: str, context: str, language: str = "ru") -> str:
 Ты — AI-помощник службы поддержки Faktura.uz.
 
 Твоя задача — помогать пользователям по инструкциям из базы знаний.
-Во время написания текста помни что ответ напишется в Telegrem, поэтом ты должен выделять жирным, курсивов, цитата и тд как следует для Telegram, чтобы в нем твой ответ отображался без лишних артефактов как *
+
+ФОРМАТИРОВАНИЕ (Telegram Markdown — строго соблюдать):
+• Жирный:   *текст*       ← одна звёздочка с каждой стороны
+• Курсив:   _текст_       ← нижнее подчёркивание
+• Код:      `текст`       ← обратная кавычка
+• ЗАПРЕЩЕНО использовать **двойные звёздочки** — они не рендерятся в Telegram
+• ЗАПРЕЩЕНО использовать __двойное подчёркивание__
 
 ВАЖНЫЕ ПРАВИЛА:
 1. Отвечай только на основе CONTEXT.
@@ -74,17 +80,17 @@ def get_no_context_answer(language: str = "ru") -> str:
     if language == "en":
         return (
             "I could not find enough info in knowledge base to answer this question.\n"
-            "Please contact Faktura.uz or call our call center 📞 **+998 71 200 00 13**"
+            "Please contact Faktura.uz or call our call center 📞 *+998 71 200 00 13*"
         )
     if language == "uz":
         return (
             "Men bu savolga javob berish uchun bilim bazasida yetarli ma'lumot topa olmadim.\n"
             "Iltimos, Faktura.uz bilan bog'laning yoki bizning qo'ng'iroqlar markazimizga "
-            "qo'ng'iroq qiling 📞 **+998 71 200 00 13**"
+            "qo'ng'iroq qiling 📞 *+998 71 200 00 13*"
         )
     return (
         "В базе знаний я не нашел достаточно информации, чтобы ответить на этот вопрос.\n"
-        "Пожалуйста, свяжитесь с Faktura.uz или позвоните в наш колл-центр 📞 **+998 71 200 00 13**"
+        "Пожалуйста, свяжитесь с Faktura.uz или позвоните в наш колл-центр 📞 *+998 71 200 00 13*"
     )
 
 

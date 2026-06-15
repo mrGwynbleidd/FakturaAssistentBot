@@ -39,14 +39,15 @@ def api_get(endpoint: str, params: dict | None = None) -> dict:
 
 
 #post-requests
-def api_post(endpoint: str, json_data: dict | list | None = None) -> dict:
-    
+def api_post(endpoint: str, json_data: dict | list | None = None, params: dict | None = None) -> dict:
+
     url = f"{FAKTURA_API_BASE_URL.rstrip('/')}/{endpoint.lstrip('/')}"
 
     response = requests.post(
         url,
         headers=build_headers(),
         json=json_data,
+        params=params,
         timeout=30,
     )
 

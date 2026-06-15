@@ -18,7 +18,10 @@ FAKTURA_ACCOUNT_URL = os.getenv("FAKTURA_ACCOUNT_URL", "https://account.faktura.
 
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-ADMIN_IDS=677539972
+EMAIL= os.getenv("EMAIL")
+API_PARAM= os.getenv("API_PARAM")
+
+ADMIN_IDS=os.getenv("ADMIN_IDS")
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY not found in .env")
 

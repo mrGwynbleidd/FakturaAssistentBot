@@ -635,3 +635,28 @@ _Основание: Источник 1 (manual_login_001), Источник 4 (
 
 *Источник / основание из базы:*
 Информация основана на рекомендациях по входу в аккаунт, связанных с ЭЦП, из файла ""approved\_case:manual\_login\_001"" и упоминании e-imzo в ""Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf"".","approved_case:manual_login_001 | distance = 4.816911697387695; Согласование документов – WIKI FAKTURA.pdf | distance = 8.198930740356445; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 8.61603832244873; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 9.202377319335938; Доверенность(Роуминг) – WIKI FAKTURA.pdf | distance = 9.40452766418457","needs_review","weak_source_distance","","Auto-saved by bot_engine because answer/context/source quality is weak."
+"case_20260614_150616_457281","2026-06-14 15:06:16","uz","uid 6a27a9a53a20a1ebd8e74fa6
+
+inn 308718167
+
+fakturada korinmayapti korib berin","*Mavjud maʼlumotlar bazasida fakturaning koʻrinmasligi yoki uni qanday tekshirish boʻyicha aniq koʻrsatma topilmadi.*
+
+Afsuski, fakturalarning koʻrinmasligi (UID: `6a27a9a53a20a1ebd8e74fa6`, INN: `308718167`) bilan bogʻliq muammoni hal qilish yoki fakturani qanday topish boʻyicha batafsil koʻrsatmalar bizning maʼlumotlar bazamizda mavjud emas. Shuning uchun, bu holatda sizga toʻgʻridan-toʻgʻri yordam bera olmayman.","Счет-фактура ФАРМ(ПКМ № 489) – WIKI FAKTURA.pdf | distance = 6.657578945159912; Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 6.671975135803223; Акт-сверки(Роуминг) – WIKI FAKTURA.pdf | distance = 7.053763389587402; Счет-фактура акциз (ПКМ № 489) – WIKI FAKTURA.pdf | distance = 7.095946311950684; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 7.576754093170166","needs_review","weak_source_distance","","Auto-saved by bot_engine because answer/context/source quality is weak."
+"case_20260614_150706_588612","2026-06-14 15:07:06","uz","uid 6a27a9a53a20a1ebd8e74fa6
+
+inn 308718167","Siz UID: `6a27a9a53a20a1ebd8e74fa6` va INN: `308718167` ma'lumotlarini taqdim etdingiz.
+
+*Kratkoy otvet:*
+Ushbu ma'lumotlarga asoslanib qanday yordam berishim kerakligini tushunmadim. Iltimos, Faktura.uz tizimi bo'yicha aniq savolingizni bering.
+
+*Nima tekshirish mumkin:*
+Sizdan quyidagi kabi savollar kutilmoqda:
+*   Ro'yxatdan o'tish
+*   Hisob-fakturalar yaratish yoki ko'rish
+*   Shaxsiy kabinetga kirish
+*   Parolni tiklash
+*   E-TSQ bilan ishlash
+*   Boshqa funksiyalar bo'yicha yordam
+
+*Agar bazada aniq ko'rsatma bo'lmasa:*
+Mening bilim bazamda taqdim etilgan UID va INN raqamlari orqali ma'lumotlarni qidirish yoki boshqa harakatlarni amalga oshirish bo'yicha aniq ko'rsatma mavjud emas. Savolingizni aniqroq bayon qilsangiz, mavjud ma'lumotlar asosida sizga yordam berishga harakat qilaman.","Товарно-транспортная накладная – WIKI FAKTURA.pdf | distance = 21.227210998535156; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 21.396121978759766; Регистрация в системе Faktura.uz – WIKI FAKTURA.pdf | distance = 21.595495223999023; Счет-фактура ФАРМ(ПКМ № 489) – WIKI FAKTURA.pdf | distance = 22.093578338623047; Выбор оператора электронного документооборота – WIKI FAKTURA.pdf | distance = 22.128583908081055","needs_review","weak_source_distance","","Auto-saved by bot_engine because answer/context/source quality is weak."

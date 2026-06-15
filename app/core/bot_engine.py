@@ -16,6 +16,13 @@ from app.rag.api_generator import generate_api_answer
 
 REVIEW_DISTANCE_THRESHOLD = 1.25
 
+# check if any source is flagged as CRITICAL (e.g., sync mismatch)
+def is_critical_case(sources: list[dict] | None) -> bool:
+    if not sources:
+        return False
+    return any(s.get("is_critical") for s in sources if isinstance(s, dict))
+
+
 #check if is it weak or no context
 #less distance - better
 #top distance too high -> founded context irrelevant
@@ -64,19 +71,23 @@ def answer_looks_weak(answer: str) -> bool:
 #choose should it send these case for review
 #return t/f and reason
 def should_send_to_review(answer: str, context: str, sources: list[dict]) -> tuple[bool, str]:
+    # CRITICAL flag always forces review (e.g. sync mismatch between Faktura and Soliq)
+    if is_critical_case(sources):
+        return True, "sync_mismatch_critical"
+
     #if no context
     if not context or not context.strip():
         return True, "empty_context"
-    
+
     if not sources:
         return True, "no_sources"
-    
+
     if has_weak_source(sources):
         return True, "weak_source_distance"
-    
+
     if answer_looks_weak(answer):
         return True, "weak_answer_text"
-    
+
     return False, "ok"
     
 
