@@ -7,7 +7,7 @@ from app.config import EMAIL
 from app.config import API_PARAM
 
 #Domain
-DOMAIN = "https://d"
+DOMAIN = "https://fakturauz.daodesk.ai"
 CLOSED_STATUS = "closed,resolved"
 OUTPUT_CSV = "daodesk_cases.csv"
 REQUEST_PAUSE=0.4
