@@ -1,5 +1,6 @@
 #import libs
-from aiogram import Router, F
+from pathlib import Path
+from aiogram import Router, F, Dispatcher
 from aiogram.types import Message
 from aiogram.filters import CommandStart, Command
 import asyncio
@@ -13,7 +14,11 @@ from app.bot.markdown_utils import safe_markdown_answer
 
 from app.bot.texts import get_text
 
+from app.config import COLLECT_GROUP_PHOTOS_ONLY
+from app.bot.photo_collector import save_group_photo
+
 router = Router()
+db = Dispatcher()
 
 USER_LANGUAGES: dict[int, str] = {}
 
@@ -237,10 +242,27 @@ async def set_en_language(message: Message):
         reply_markup=main_menu_keyboard("en"),
     )
 
+
+
+@router.message(F.photo)
+async def photo_handler(message: Message):
+
+    if COLLECT_GROUP_PHOTOS_ONLY:
+        await save_group_photo(message)
+        return
+    
+    return
+
+
+
+
 # User Questions
 
 @router.message(F.text)
 async def question_handler(msg: Message):
+
+    if COLLECT_GROUP_PHOTOS_ONLY:
+        return
 
     #get user question
     user_question = msg.text.strip()
@@ -353,6 +375,9 @@ from app.core.bot_engine import process_user_image
 @router.message(F.photo)
 async def photo_handler(msg: Message):
 
+    if COLLECT_GROUP_PHOTOS_ONLY:
+        return
+
     user_id = msg.from_user.id
     language = get_user_language(user_id)
     photo: PhotoSize = msg.photo[-1]
@@ -411,4 +436,5 @@ async def photo_handler(msg: Message):
         import re as _re
         plain = _re.sub(r'[*_`]', '', final_text)
         await msg.answer(plain, reply_markup=main_menu_keyboard(language))
+
 

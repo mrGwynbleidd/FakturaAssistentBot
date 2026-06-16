@@ -29,7 +29,7 @@ def build_index() -> None:
     print("Load Approved cases...")
     approved_cases = load_approved_cases()
 
-    print(f"Founded approved cases: ")
+    print(f"Founded approved cases: {len(approved_cases)}")
 
     all_docs = []
 
@@ -91,14 +91,18 @@ def build_index() -> None:
             ids.append(f"chunk_{counter}")
             #add chunk
             texts.append(chunk)
+
+            if not isinstance(doc, dict):
+                return doc
+            
+
+            chunk_metadata = doc.get("matadata", {}).copy()
+            chunk_metadata["source"] = source
             #add source
-            metadatas.append(
-                {
-                    "source": source,
-                }
-            )
+            metadatas.append(chunk_metadata)
 
     print(f"Creating embeddings for {len(texts)} fragments...")
+    
 
     #embedding chunks
     embeddings = get_embeddings(texts)
