@@ -135,135 +135,203 @@ Need dataset with keywords, and ability to detect it other languages
 
 !!!!!!!!!!!
 
-Теперь вижу все проблемы:
+Да, я посмотрел репозиторий. У тебя уже есть нужные папки `app/learning` и `app/faktura_api`; в `learning` лежат `approved_loader.py`, `case_logger.py`, `review_manager.py`, а в `faktura_api` есть `call_center_api.py` и другие API-файлы. ([GitHub][1]) ([GitHub][2])
 
-**Проблема 1 — `needs_review.csv` не имеет заголовка** (`case_id,datetime,...`) — поэтому `csv.DictReader` не знает названия колонок и `row.get("status")` всегда возвращает `None`. Кейсы есть, но фильтр `== "needs_review"` никогда не срабатывает.
+Главный ответ: **реальные кейсы call center не нужно сразу писать в `approved.csv`**. Правильнее так:
 
-**Проблема 2 — `approved.csv`** — ответы с переносами строк ломают CSV потому что не экранируются правильно при записи.
+```text
+call_center_api.py
+    ↓
+data/learning/call_center_cases_raw.csv  ← сырые реальные кейсы
+    ↓
+ручная/AI-нормализация
+    ↓
+data/learning/approved.csv               ← только проверенные хорошие ответы
+    ↓
+build_index.py
+    ↓
+ChromaDB
+```
 
-**Проблема 3 — нет даты** в `approved.csv` — в `APPROVED_FIELDNAMES` нет поля `datetime`.
-
-Исправляю все три файла + добавляю управление админами:
-
-**`app/learning/case_logger.py`** — смотрю как пишется `needs_review.csv`:Теперь вижу всё. Проблема ясна — в `needs_review.csv` **нет заголовка** потому что файл уже существовал когда добавили `writer.writeheader()`. Поэтому первая строка это данные, а не заголовок — `DictReader` читает её как имена колонок и всё ломается.
-
-Вот все исправления:
+`approved.csv` должен быть **чистой базой обучения**, потому что всё, что туда попадёт, потом индексируется и влияет на ответы бота.
 
 ---
 
-**`app/learning/case_logger.py`** — добавляем `quoting` чтобы многострочные ответы не ломали CSV:
+# Что сейчас не так
+
+## 1. `approved.csv` может ломаться из-за старого заголовка
+
+В текущем `review_manager.py` путь идёт в:
+
+```text
+data/learning/approved.csv
+```
+
+и поля там такие: `case_id`, `datetime`, `language`, `question`, `approved_answer`, `category`, `source_type`. ([GitHub][3])
+
+Но проверка заголовка слабая:
 
 ```python
-import csv
-from pathlib import Path
-from datetime import datetime
+has_header = "case_id" in first_line
+```
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-NEEDS_REVIEW_PATH = BASE_DIR / "data" / "learning" / "needs_review.csv"
+Если старый CSV уже содержит `case_id`, но остальные столбцы неправильные, код будет продолжать писать в сломанный файл.
 
-FIELDNAMES = [
-    "case_id",
-    "datetime",
-    "language",
-    "question",
-    "bot_answer",
-    "sources",
-    "status",
-    "reason",
-    "admin_answer",
-    "notes",
-]
+---
 
+## 2. `call_center_api.py` сейчас сохраняет в отдельный файл, но не в правильной структуре
 
-def format_sources(sources: list[dict] | None) -> str:
-    if not sources:
-        return ""
-    result = []
-    for source in sources:
-        source_name = source.get("source", "unknown")
-        distance = source.get("distance")
-        if distance is not None:
-            result.append(f"{source_name} | distance = {distance}")
-        else:
-            result.append(source_name)
-    return "; ".join(result)
+Сейчас там указан:
 
+```python
+OUTPUT_CSV = "daodesk_cases.csv"
+```
 
-def create_case_id() -> str:
-    return "case_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+и формируются только `ticket_id`, `question`, `answer`, `date`. ([GitHub][4])
 
+Для обучения этого мало. Нужно добавить:
 
-def save_case_for_review(
-    question: str,
-    bot_answer: str,
-    language: str = "unknown",
-    sources: list[dict] | None = None,
-    reason: str = "unknown",
-    notes: str = "",
-) -> str:
-
-    NEEDS_REVIEW_PATH.parent.mkdir(parents=True, exist_ok=True)
-    file_exists = NEEDS_REVIEW_PATH.exists()
-
-    # Если файл существует — проверяем есть ли заголовок
-    has_header = False
-    if file_exists:
-        with open(NEEDS_REVIEW_PATH, encoding="utf-8-sig", newline="") as f:
-            first_line = f.readline()
-            has_header = "case_id" in first_line
-
-    case_id = create_case_id()
-
-    row = {
-        "case_id": case_id,
-        "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "language": language,
-        "question": question,
-        # Убираем переносы строк из ответа — они ломают CSV
-        "bot_answer": bot_answer.replace("\n", " ").replace("\r", " ") if bot_answer else "",
-        "sources": format_sources(sources),
-        "status": "needs_review",
-        "reason": reason,
-        "admin_answer": "",
-        "notes": notes.replace("\n", " ") if notes else "",
-    }
-
-    with open(NEEDS_REVIEW_PATH, mode="a", encoding="utf-8-sig", newline="") as file:
-        writer = csv.DictWriter(
-            file,
-            fieldnames=FIELDNAMES,
-            quoting=csv.QUOTE_ALL,  # все поля в кавычках — многострочный текст не ломает CSV
-        )
-        if not has_header:
-            writer.writeheader()
-
-        writer.writerow(row)
-
-    return case_id
+```text
+case_id
+language
+question
+approved_answer / admin_answer
+category
+source_type
+source_id
+status
 ```
 
 ---
 
-**`app/learning/review_manager.py`** — добавляем дату в `approved.csv`:
+## 3. В `index_builder.py` теряется metadata approved cases
+
+Сейчас `index_builder.py` загружает approved cases, но при добавлении chunk metadata сохраняет только:
+
+```python
+{"source": source}
+```
+
+из-за этого теряются `source_type`, `category`, `language`. ([GitHub][5])
+
+---
+
+# Что нужно сделать
+
+## Шаг 1. Замени `app/learning/review_manager.py`
+
+Этот файл будет правильно сохранять approved cases и не ломать CSV.
 
 ```python
 import csv
 from pathlib import Path
 from datetime import datetime
 
+
 BASE_DIR = Path(__file__).resolve().parents[2]
-NEEDS_REVIEW_PATH = BASE_DIR / "data" / "learning" / "needs_review.csv"
 APPROVED_CASES_PATH = BASE_DIR / "data" / "learning" / "approved.csv"
+
 
 APPROVED_FIELDNAMES = [
     "case_id",
-    "datetime",       # ← добавлено
+    "datetime",
     "language",
     "question",
     "approved_answer",
     "category",
     "source_type",
+    "source_id",
+    "status",
+    "notes",
 ]
+
+
+def clean_text(value: str | None) -> str:
+    """
+    Чистит текст для CSV:
+    - убирает лишние переносы строк;
+    - убирает лишние пробелы;
+    - не ломает структуру CSV.
+    """
+
+    if not value:
+        return ""
+
+    return " ".join(str(value).split())
+
+
+def ensure_csv_header(path: Path, fieldnames: list[str]) -> None:
+    """
+    Проверяет заголовок CSV.
+    Если файл существует, но заголовок неправильный,
+    делает backup и создаёт новый правильный файл.
+    """
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    if not path.exists():
+        return
+
+    with open(path, mode="r", encoding="utf-8-sig", newline="") as file:
+        reader = csv.reader(file)
+        current_header = next(reader, [])
+
+    if current_header != fieldnames:
+        backup_path = path.with_name(
+            f"{path.stem}_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}{path.suffix}"
+        )
+        path.rename(backup_path)
+        print(f"Old approved.csv header was wrong. Backup created: {backup_path}")
+
+
+def save_approved_case(
+    case_id: str,
+    question: str,
+    approved_answer: str,
+    language: str = "ru",
+    category: str = "general",
+    source_type: str = "admin_review",
+    source_id: str = "",
+    status: str = "approved",
+    notes: str = "",
+) -> None:
+    """
+    Сохраняет один проверенный кейс в approved.csv.
+
+    Важно:
+    approved.csv должен содержать только хорошие ответы,
+    потому что этот файл индексируется в ChromaDB.
+    """
+
+    ensure_csv_header(APPROVED_CASES_PATH, APPROVED_FIELDNAMES)
+
+    file_exists = APPROVED_CASES_PATH.exists()
+
+    row = {
+        "case_id": clean_text(case_id),
+        "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "language": clean_text(language),
+        "question": clean_text(question),
+        "approved_answer": clean_text(approved_answer),
+        "category": clean_text(category),
+        "source_type": clean_text(source_type),
+        "source_id": clean_text(source_id),
+        "status": clean_text(status),
+        "notes": clean_text(notes),
+    }
+
+    with open(APPROVED_CASES_PATH, mode="a", encoding="utf-8-sig", newline="") as file:
+        writer = csv.DictWriter(
+            file,
+            fieldnames=APPROVED_FIELDNAMES,
+            quoting=csv.QUOTE_ALL,
+            extrasaction="ignore",
+        )
+
+        if not file_exists:
+            writer.writeheader()
+
+        writer.writerow(row)
 
 
 def approve_case_manually(
@@ -273,1286 +341,1393 @@ def approve_case_manually(
     language: str = "ru",
     category: str = "general",
 ) -> None:
+    """
+    Старое имя функции оставляем, чтобы test_approve_case.py не сломался.
+    """
 
-    APPROVED_CASES_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-    file_exists = APPROVED_CASES_PATH.exists()
-
-    # Проверяем есть ли заголовок
-    has_header = False
-    if file_exists:
-        with open(APPROVED_CASES_PATH, encoding="utf-8-sig", newline="") as f:
-            first_line = f.readline()
-            has_header = "case_id" in first_line
-
-    row = {
-        "case_id": case_id,
-        "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "language": language,
-        "question": question,
-        "approved_answer": approved_answer.replace("\n", " ").replace("\r", " ") if approved_answer else "",
-        "category": category,
-        "source_type": "admin_review",
-    }
-
-    with open(APPROVED_CASES_PATH, mode="a", encoding="utf-8-sig", newline="") as file:
-        writer = csv.DictWriter(
-            file,
-            fieldnames=APPROVED_FIELDNAMES,
-            quoting=csv.QUOTE_ALL,
-        )
-        if not has_header:
-            writer.writeheader()
-
-        writer.writerow(row)
+    save_approved_case(
+        case_id=case_id,
+        question=question,
+        approved_answer=approved_answer,
+        language=language,
+        category=category,
+        source_type="admin_review",
+        source_id=case_id,
+        status="approved",
+    )
 ```
 
 ---
 
-**`app/bot/admin_handlers.py`** — исправляем чтение CSV + добавляем управление админами:
+## Шаг 2. Замени `app/learning/approved_loader.py`
+
+Этот файл будет читать только approved cases со статусом `approved`.
 
 ```python
 import csv
 from pathlib import Path
-from datetime import datetime
 
-from aiogram import Router, F
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
-from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
-
-from app.learning.review_manager import approve_case_manually
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-NEEDS_REVIEW_PATH = BASE_DIR / "data" / "learning" / "needs_review.csv"
 APPROVED_CASES_PATH = BASE_DIR / "data" / "learning" / "approved.csv"
-ADMINS_PATH = BASE_DIR / "data" / "admins.txt"
-
-# Начальный админ — всегда имеет доступ
-ROOT_ADMIN_ID = 677539972
-
-router = Router()
 
 
-# ── Управление админами ───────────────────────────────────────────────────────
-def load_admin_ids() -> set[int]:
-    ids = {ROOT_ADMIN_ID}
-    if ADMINS_PATH.exists():
-        with open(ADMINS_PATH, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line.isdigit():
-                    ids.add(int(line))
-    return ids
+def load_approved_cases() -> list[dict]:
+    """
+    Загружает approved cases из approved.csv
+    и превращает их в документы для ChromaDB.
+    """
 
-
-def save_admin_ids(ids: set[int]) -> None:
-    ADMINS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    # ROOT_ADMIN не сохраняем — он всегда в коде
-    other_ids = ids - {ROOT_ADMIN_ID}
-    with open(ADMINS_PATH, "w", encoding="utf-8") as f:
-        for admin_id in sorted(other_ids):
-            f.write(f"{admin_id}\n")
-
-
-def is_admin(user_id: int) -> bool:
-    return user_id in load_admin_ids()
-
-
-# ── FSM ───────────────────────────────────────────────────────────────────────
-class AdminReview(StatesGroup):
-    waiting_for_answer = State()
-    waiting_for_category = State()
-    waiting_for_new_admin_id = State()
-    waiting_for_remove_admin_id = State()
-
-
-ADMIN_SESSION: dict[int, dict] = {}
-
-
-# ── Клавиатуры ────────────────────────────────────────────────────────────────
-def admin_main_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📋 Кейсы на проверку")],
-            [KeyboardButton(text="📊 Статистика"), KeyboardButton(text="👥 Управление админами")],
-            [KeyboardButton(text="🚪 Выйти из панели")],
-        ],
-        resize_keyboard=True,
-    )
-
-
-def review_action_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="✅ Одобрить"), KeyboardButton(text="⏭ Следующий")],
-            [KeyboardButton(text="❌ Отклонить"), KeyboardButton(text="📋 Все кейсы")],
-            [KeyboardButton(text="🚪 Выйти из панели")],
-        ],
-        resize_keyboard=True,
-    )
-
-
-def cancel_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="❌ Отмена")]],
-        resize_keyboard=True,
-    )
-
-
-def admins_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="➕ Добавить админа")],
-            [KeyboardButton(text="➖ Удалить админа"), KeyboardButton(text="📋 Список админов")],
-            [KeyboardButton(text="⬅️ Назад в панель")],
-        ],
-        resize_keyboard=True,
-    )
-
-
-# ── Чтение needs_review.csv ───────────────────────────────────────────────────
-def load_pending_cases() -> list[dict]:
-    if not NEEDS_REVIEW_PATH.exists():
+    if not APPROVED_CASES_PATH.exists():
         return []
 
-    cases = []
-    with open(NEEDS_REVIEW_PATH, encoding="utf-8-sig", newline="") as file:
-        content = file.read()
+    documents = []
 
-    # Проверяем есть ли заголовок
-    if "case_id" not in content.split("\n")[0]:
-        # Заголовка нет — файл сломан, возвращаем пустой список
+    with open(APPROVED_CASES_PATH, mode="r", encoding="utf-8-sig", newline="") as file:
+        reader = csv.DictReader(file)
+
+        for row in reader:
+            status = row.get("status", "approved").strip().lower()
+
+            if status and status != "approved":
+                continue
+
+            question = row.get("question", "").strip()
+            answer = row.get("approved_answer", "").strip()
+            language = row.get("language", "unknown").strip()
+            category = row.get("category", "general").strip()
+            case_id = row.get("case_id", "").strip()
+            source_type = row.get("source_type", "admin_review").strip()
+            source_id = row.get("source_id", case_id).strip()
+
+            if not question or not answer:
+                continue
+
+            text = f"""
+User question:
+{question}
+
+Correct support answer:
+{answer}
+""".strip()
+
+            documents.append(
+                {
+                    "source": f"{source_type}:{source_id or case_id}",
+                    "text": text,
+                    "metadata": {
+                        "source": f"{source_type}:{source_id or case_id}",
+                        "case_id": case_id,
+                        "language": language,
+                        "category": category,
+                        "source_type": source_type,
+                        "source_id": source_id,
+                    },
+                }
+            )
+
+    return documents
+```
+
+---
+
+## Шаг 3. Исправь `app/rag/index_builder.py`
+
+Нужно сохранить metadata от approved cases, а не только `source`.
+
+Найди в `index_builder.py` этот кусок:
+
+```python
+metadatas.append(
+    {
+        "source": source,
+    }
+)
+```
+
+Замени на:
+
+```python
+chunk_metadata = doc.get("metadata", {}).copy()
+chunk_metadata["source"] = source
+
+metadatas.append(chunk_metadata)
+```
+
+И ещё исправь вывод:
+
+```python
+print(f"Founded approved cases: {len(approved_cases)}")
+```
+
+---
+
+# Шаг 4. Замени `app/faktura_api/call_center_api.py`
+
+Этот файл должен сохранять **сырые кейсы** отдельно:
+
+```text
+data/learning/call_center_cases_raw.csv
+```
+
+Не в `approved.csv`.
+
+```python
+import csv
+import time
+from pathlib import Path
+
+import requests
+from requests.auth import HTTPBasicAuth
+from bs4 import BeautifulSoup
+
+from app.config import EMAIL, API_PARAM
+
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+
+# В .env лучше добавить:
+# CALL_CENTER_DOMAIN=https://your-domain.daodesk.com
+CALL_CENTER_DOMAIN = "https://d"
+
+CLOSED_STATUS = "closed,resolved"
+REQUEST_PAUSE = 0.4
+
+BASE_URL = f"{CALL_CENTER_DOMAIN.rstrip('/')}/api/v2"
+
+OUTPUT_CSV = BASE_DIR / "data" / "learning" / "call_center_cases_raw.csv"
+
+RAW_FIELDNAMES = [
+    "case_id",
+    "ticket_id",
+    "datetime",
+    "language",
+    "question",
+    "admin_answer",
+    "category",
+    "source_type",
+    "source_id",
+    "status",
+]
+
+
+auth = HTTPBasicAuth(EMAIL, API_PARAM)
+
+
+def strip_html(html: str) -> str:
+    """
+    Убирает HTML-теги из сообщения.
+    """
+
+    return BeautifulSoup(html or "", "html.parser").get_text(
+        separator=" ",
+        strip=True,
+    )
+
+
+def clean_text(value: str | None) -> str:
+    """
+    Чистит текст для CSV.
+    """
+
+    if not value:
+        return ""
+
+    return " ".join(str(value).split())
+
+
+def extract_items(payload) -> list[dict]:
+    """
+    Универсально достаёт список элементов из ответа API.
+
+    Поддерживает:
+    - list
+    - {"data": [...]}
+    - {"data": {...}}
+    - {"items": [...]}
+    """
+
+    if isinstance(payload, list):
+        return payload
+
+    if not isinstance(payload, dict):
         return []
 
-    import io
-    reader = csv.DictReader(io.StringIO(content), quoting=csv.QUOTE_ALL)
-    for row in reader:
-        if row.get("status", "").strip() == "needs_review":
-            cases.append(dict(row))
+    data = payload.get("data")
 
-    return cases
+    if isinstance(data, list):
+        return data
+
+    if isinstance(data, dict):
+        return list(data.values())
+
+    items = payload.get("items")
+
+    if isinstance(items, list):
+        return items
+
+    return []
 
 
-def mark_case_as_reviewed(case_id: str, new_status: str) -> None:
-    if not NEEDS_REVIEW_PATH.exists():
-        return
+def get_tickets(page: int) -> dict:
+    """
+    Получает список тикетов.
+    """
+
+    params = {"page": page}
+
+    if CLOSED_STATUS:
+        params["status_list"] = CLOSED_STATUS
+
+    response = requests.get(
+        f"{BASE_URL}/tickets/",
+        params=params,
+        auth=auth,
+        timeout=30,
+    )
+
+    response.raise_for_status()
+
+    return response.json()
+
+
+def get_posts(ticket_id: int) -> list[dict]:
+    """
+    Получает сообщения внутри тикета.
+    """
+
+    response = requests.get(
+        f"{BASE_URL}/tickets/{ticket_id}/posts/",
+        params={"page": 1},
+        auth=auth,
+        timeout=30,
+    )
+
+    response.raise_for_status()
+
+    return extract_items(response.json())
+
+
+def build_qa(ticket: dict) -> dict | None:
+    """
+    Собирает Q/A из одного тикета:
+    - вопрос пользователя;
+    - ответ сотрудников call center.
+    """
+
+    ticket_id = ticket.get("id")
+
+    if not ticket_id:
+        return None
+
+    client_id = ticket.get("user_id")
+
+    posts = get_posts(ticket_id)
+
+    if not posts:
+        return None
+
+    posts.sort(key=lambda post: post.get("id", 0))
+
+    questions = []
+    answers = []
+
+    for post in posts:
+        text = strip_html(post.get("text", ""))
+
+        if not text:
+            continue
+
+        if post.get("user_id") == client_id:
+            questions.append(text)
+        else:
+            answers.append(text)
+
+    question = clean_text(
+        f"{ticket.get('title', '')} {' '.join(questions)}"
+    )
+
+    answer = clean_text(
+        " ".join(answers)
+    )
+
+    if not question or not answer:
+        return None
+
+    return {
+        "case_id": f"callcenter_{ticket_id}",
+        "ticket_id": ticket_id,
+        "datetime": ticket.get("date_created", ""),
+        "language": "ru",
+        "question": question,
+        "admin_answer": answer,
+        "category": "call_center",
+        "source_type": "call_center",
+        "source_id": str(ticket_id),
+        "status": "raw",
+    }
+
+
+def save_call_center_cases(max_pages: int | None = None) -> None:
+    """
+    Сохраняет реальные кейсы call center в отдельный raw CSV.
+    """
+
+    OUTPUT_CSV.parent.mkdir(parents=True, exist_ok=True)
 
     rows = []
-    fieldnames = None
+    page = 1
 
-    with open(NEEDS_REVIEW_PATH, encoding="utf-8-sig", newline="") as file:
-        reader = csv.DictReader(file, quoting=csv.QUOTE_ALL)
-        fieldnames = reader.fieldnames
-        for row in reader:
-            if row.get("case_id") == case_id:
-                row["status"] = new_status
-            rows.append(row)
+    while True:
+        data = get_tickets(page)
+        tickets = extract_items(data)
 
-    if not fieldnames:
-        return
+        if not tickets:
+            break
 
-    with open(NEEDS_REVIEW_PATH, "w", encoding="utf-8-sig", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+        for ticket in tickets:
+            qa = build_qa(ticket)
+
+            if qa:
+                rows.append(qa)
+                print(
+                    f"Ticket {qa['ticket_id']}: {qa['question'][:60]}..."
+                )
+
+            time.sleep(REQUEST_PAUSE)
+
+        pagination = data.get("pagination", {}) if isinstance(data, dict) else {}
+        total_pages = pagination.get("total_pages", page)
+
+        print(f"Page {page}/{total_pages} processed")
+
+        if max_pages and page >= max_pages:
+            break
+
+        if page >= total_pages:
+            break
+
+        page += 1
+        time.sleep(REQUEST_PAUSE)
+
+    with open(OUTPUT_CSV, mode="w", encoding="utf-8-sig", newline="") as file:
+        writer = csv.DictWriter(
+            file,
+            fieldnames=RAW_FIELDNAMES,
+            quoting=csv.QUOTE_ALL,
+        )
+
         writer.writeheader()
         writer.writerows(rows)
 
-
-def get_stats() -> dict:
-    stats = {"pending": 0, "approved": 0, "rejected": 0, "skipped": 0}
-
-    if NEEDS_REVIEW_PATH.exists():
-        with open(NEEDS_REVIEW_PATH, encoding="utf-8-sig", newline="") as file:
-            for row in csv.DictReader(file, quoting=csv.QUOTE_ALL):
-                status = row.get("status", "").strip()
-                if status == "needs_review":
-                    stats["pending"] += 1
-                elif status == "rejected":
-                    stats["rejected"] += 1
-                elif status == "skipped":
-                    stats["skipped"] += 1
-
-    if APPROVED_CASES_PATH.exists():
-        with open(APPROVED_CASES_PATH, encoding="utf-8-sig", newline="") as file:
-            stats["approved"] = sum(1 for _ in csv.DictReader(file))
-
-    return stats
+    print(f"\nReady: {len(rows)} cases saved in {OUTPUT_CSV}")
 
 
-def format_case_message(case: dict, index: int, total: int) -> str:
-    lang_emoji = {"ru": "🇷🇺", "uz": "🇺🇿", "en": "🇬🇧"}.get(case.get("language", "ru"), "🌐")
-    reason_map = {
-        "weak_source_distance": "слабый контекст",
-        "weak_answer_text": "слабый ответ",
-        "empty_context": "нет контекста",
-        "no_sources": "нет источников",
-        "retriever_or_api_error": "ошибка поиска",
-        "generator_error": "ошибка генерации",
-    }
-    reason = reason_map.get(case.get("reason", ""), case.get("reason", "—"))
-
-    # Обрезаем длинный ответ бота чтобы не спамить
-    bot_answer = case.get("bot_answer", "—")
-    if len(bot_answer) > 300:
-        bot_answer = bot_answer[:300] + "..."
-
-    return (
-        f"📌 *Кейс {index}/{total}*\n"
-        f"🆔 `{case.get('case_id', '—')}`\n"
-        f"🕐 {case.get('datetime', '—')}\n"
-        f"{lang_emoji} Язык: `{case.get('language', '—')}`\n"
-        f"⚠️ Причина: `{reason}`\n"
-        f"───────────────────\n"
-        f"❓ *Вопрос:*\n{case.get('question', '—')}\n"
-        f"───────────────────\n"
-        f"🤖 *Ответ бота:*\n{bot_answer}\n"
-        f"───────────────────\n"
-        f"📎 Источники: `{case.get('sources', 'нет')[:100]}`"
-    )
-
-
-# ── /admin ────────────────────────────────────────────────────────────────────
-@router.message(Command("admin"))
-async def admin_panel_handler(msg: Message, state: FSMContext):
-    if not is_admin(msg.from_user.id):
-        await msg.answer("⛔ У вас нет доступа к этой команде.")
-        return
-    await state.clear()
-    pending = load_pending_cases()
-    await msg.answer(
-        f"👨‍💼 *Добро пожаловать в админ-панель!*\n\n"
-        f"📋 Кейсов на проверку: *{len(pending)}*\n\n"
-        f"Выберите действие:",
-        reply_markup=admin_main_keyboard(),
-        parse_mode="Markdown",
-    )
-
-
-# ── Выход ─────────────────────────────────────────────────────────────────────
-@router.message(F.text.in_(["🚪 Выйти из панели", "⬅️ Назад в панель"]))
-async def exit_admin_panel(msg: Message, state: FSMContext):
-    if not is_admin(msg.from_user.id):
-        return
-    await state.clear()
-    ADMIN_SESSION.pop(msg.from_user.id, None)
-
-    if msg.text == "⬅️ Назад в панель":
-        pending = load_pending_cases()
-        await msg.answer(
-            f"👨‍💼 *Админ-панель*\n\nКейсов на проверку: *{len(pending)}*",
-            reply_markup=admin_main_keyboard(),
-            parse_mode="Markdown",
-        )
-        return
-
-    from app.bot.keyboards import main_menu_keyboard
-    await msg.answer("Вы вышли из админ-панели.", reply_markup=main_menu_keyboard("ru"))
-
-
-# ── Статистика ────────────────────────────────────────────────────────────────
-@router.message(F.text == "📊 Статистика")
-async def stats_handler(msg: Message):
-    if not is_admin(msg.from_user.id):
-        return
-    stats = get_stats()
-    await msg.answer(
-        f"📊 *Статистика базы знаний*\n\n"
-        f"⏳ Ожидают проверки: *{stats['pending']}*\n"
-        f"✅ Одобрено: *{stats['approved']}*\n"
-        f"❌ Отклонено: *{stats['rejected']}*\n"
-        f"⏭ Пропущено: *{stats['skipped']}*",
-        reply_markup=admin_main_keyboard(),
-        parse_mode="Markdown",
-    )
-
-
-# ── Управление админами ───────────────────────────────────────────────────────
-@router.message(F.text == "👥 Управление админами")
-async def manage_admins(msg: Message, state: FSMContext):
-    if not is_admin(msg.from_user.id):
-        return
-    await state.clear()
-    await msg.answer("👥 *Управление администраторами*", reply_markup=admins_keyboard(), parse_mode="Markdown")
-
-
-@router.message(F.text == "📋 Список админов")
-async def list_admins(msg: Message):
-    if not is_admin(msg.from_user.id):
-        return
-    ids = load_admin_ids()
-    lines = [f"👑 `{ROOT_ADMIN_ID}` — главный админ"]
-    for admin_id in sorted(ids):
-        if admin_id != ROOT_ADMIN_ID:
-            lines.append(f"👤 `{admin_id}`")
-    await msg.answer(
-        f"📋 *Список администраторов:*\n\n" + "\n".join(lines),
-        reply_markup=admins_keyboard(),
-        parse_mode="Markdown",
-    )
-
-
-@router.message(F.text == "➕ Добавить админа")
-async def add_admin_start(msg: Message, state: FSMContext):
-    if not is_admin(msg.from_user.id):
-        return
-    await msg.answer(
-        "Отправьте Telegram *user_id* нового администратора.\n\n"
-        "Узнать ID можно через @userinfobot",
-        reply_markup=cancel_keyboard(),
-        parse_mode="Markdown",
-    )
-    await state.set_state(AdminReview.waiting_for_new_admin_id)
-
-
-@router.message(AdminReview.waiting_for_new_admin_id, F.text == "❌ Отмена")
-async def cancel_add_admin(msg: Message, state: FSMContext):
-    await state.clear()
-    await msg.answer("Отменено.", reply_markup=admins_keyboard())
-
-
-@router.message(AdminReview.waiting_for_new_admin_id, F.text)
-async def add_admin_confirm(msg: Message, state: FSMContext):
-    if not is_admin(msg.from_user.id):
-        return
-    text = msg.text.strip()
-    if not text.isdigit():
-        await msg.answer("❌ Введите числовой Telegram ID (только цифры).")
-        return
-    new_id = int(text)
-    ids = load_admin_ids()
-    if new_id in ids:
-        await msg.answer(f"⚠️ Пользователь `{new_id}` уже является админом.", parse_mode="Markdown")
-    else:
-        ids.add(new_id)
-        save_admin_ids(ids)
-        await msg.answer(f"✅ Пользователь `{new_id}` добавлен как администратор.", parse_mode="Markdown")
-    await state.clear()
-    await msg.answer("Выберите действие:", reply_markup=admins_keyboard())
-
-
-@router.message(F.text == "➖ Удалить админа")
-async def remove_admin_start(msg: Message, state: FSMContext):
-    if not is_admin(msg.from_user.id):
-        return
-    ids = load_admin_ids()
-    removable = ids - {ROOT_ADMIN_ID}
-    if not removable:
-        await msg.answer("Нет дополнительных администраторов для удаления.")
-        return
-    lines = "\n".join(f"• `{i}`" for i in sorted(removable))
-    await msg.answer(
-        f"Отправьте ID админа для удаления:\n\n{lines}",
-        reply_markup=cancel_keyboard(),
-        parse_mode="Markdown",
-    )
-    await state.set_state(AdminReview.waiting_for_remove_admin_id)
-
-
-@router.message(AdminReview.waiting_for_remove_admin_id, F.text == "❌ Отмена")
-async def cancel_remove_admin(msg: Message, state: FSMContext):
-    await state.clear()
-    await msg.answer("Отменено.", reply_markup=admins_keyboard())
-
-
-@router.message(AdminReview.waiting_for_remove_admin_id, F.text)
-async def remove_admin_confirm(msg: Message, state: FSMContext):
-    if not is_admin(msg.from_user.id):
-        return
-    text = msg.text.strip()
-    if not text.isdigit():
-        await msg.answer("❌ Введите числовой Telegram ID.")
-        return
-    remove_id = int(text)
-    if remove_id == ROOT_ADMIN_ID:
-        await msg.answer("⛔ Нельзя удалить главного администратора.")
-        await state.clear()
-        return
-    ids = load_admin_ids()
-    if remove_id not in ids:
-        await msg.answer(f"⚠️ Пользователь `{remove_id}` не найден в списке.", parse_mode="Markdown")
-    else:
-        ids.discard(remove_id)
-        save_admin_ids(ids)
-        await msg.answer(f"✅ Пользователь `{remove_id}` удалён из администраторов.", parse_mode="Markdown")
-    await state.clear()
-    await msg.answer("Выберите действие:", reply_markup=admins_keyboard())
-
-
-# ── Просмотр кейсов ───────────────────────────────────────────────────────────
-@router.message(F.text.in_(["📋 Кейсы на проверку", "📋 Все кейсы"]))
-async def start_review(msg: Message, state: FSMContext):
-    if not is_admin(msg.from_user.id):
-        return
-    cases = load_pending_cases()
-    if not cases:
-        await msg.answer("✅ Все кейсы проверены, очередь пуста.", reply_markup=admin_main_keyboard())
-        return
-    ADMIN_SESSION[msg.from_user.id] = {"cases": cases, "index": 0}
-    await send_current_case(msg, state)
-
-
-async def send_current_case(msg: Message, state: FSMContext):
-    session = ADMIN_SESSION.get(msg.from_user.id)
-    if not session:
-        return
-    cases = session["cases"]
-    index = session["index"]
-    if index >= len(cases):
-        await msg.answer("✅ Все кейсы просмотрены!", reply_markup=admin_main_keyboard())
-        ADMIN_SESSION.pop(msg.from_user.id, None)
-        await state.clear()
-        return
-    case = cases[index]
-    text = format_case_message(case, index + 1, len(cases))
-    await msg.answer(text, reply_markup=review_action_keyboard(), parse_mode="Markdown")
-
-
-@router.message(F.text == "✅ Одобрить")
-async def approve_start(msg: Message, state: FSMContext):
-    if not is_admin(msg.from_user.id):
-        return
-    session = ADMIN_SESSION.get(msg.from_user.id)
-    if not session:
-        await msg.answer("Сначала откройте кейсы: «📋 Кейсы на проверку»")
-        return
-    case = session["cases"][session["index"]]
-    await msg.answer(
-        f"✏️ *Напишите правильный ответ* для вопроса:\n\n_{case.get('question', '')}_",
-        reply_markup=cancel_keyboard(),
-        parse_mode="Markdown",
-    )
-    await state.set_state(AdminReview.waiting_for_answer)
-
-
-@router.message(AdminReview.waiting_for_answer, F.text == "❌ Отмена")
-async def cancel_approve(msg: Message, state: FSMContext):
-    await state.clear()
-    await msg.answer("Отменено.", reply_markup=review_action_keyboard())
-
-
-@router.message(AdminReview.waiting_for_answer, F.text)
-async def receive_admin_answer(msg: Message, state: FSMContext):
-    if not is_admin(msg.from_user.id):
-        return
-    await state.update_data(admin_answer=msg.text.strip())
-    await state.set_state(AdminReview.waiting_for_category)
-    await msg.answer(
-        "📂 *Укажите категорию:*",
-        reply_markup=ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text="login"), KeyboardButton(text="registration")],
-                [KeyboardButton(text="edo"), KeyboardButton(text="invoice")],
-                [KeyboardButton(text="password"), KeyboardButton(text="general")],
-                [KeyboardButton(text="⏩ Пропустить категорию")],
-            ],
-            resize_keyboard=True,
-        ),
-        parse_mode="Markdown",
-    )
-
-
-@router.message(AdminReview.waiting_for_category, F.text)
-async def receive_category(msg: Message, state: FSMContext):
-    if not is_admin(msg.from_user.id):
-        return
-    session = ADMIN_SESSION.get(msg.from_user.id)
-    if not session:
-        await state.clear()
-        return
-    data = await state.get_data()
-    admin_answer = data.get("admin_answer", "")
-    case = session["cases"][session["index"]]
-    category = "general" if msg.text.strip() == "⏩ Пропустить категорию" else msg.text.strip().lower()
-
-    approve_case_manually(
-        case_id=case.get("case_id", f"manual_{datetime.now().strftime('%Y%m%d_%H%M%S')}"),
-        question=case.get("question", ""),
-        approved_answer=admin_answer,
-        language=case.get("language", "ru"),
-        category=category,
-    )
-    mark_case_as_reviewed(case.get("case_id", ""), "approved")
-    await state.clear()
-
-    session["index"] += 1
-    remaining = len(session["cases"]) - session["index"]
-
-    await msg.answer(
-        f"✅ *Сохранено!* Категория: `{category}` | Осталось: *{remaining}*",
-        reply_markup=review_action_keyboard(),
-        parse_mode="Markdown",
-    )
-    if remaining == 0:
-        await msg.answer("🎉 Все кейсы проверены!", reply_markup=admin_main_keyboard())
-        ADMIN_SESSION.pop(msg.from_user.id, None)
-    else:
-        await send_current_case(msg, state)
-
-
-@router.message(F.text == "⏭ Следующий")
-async def skip_case(msg: Message, state: FSMContext):
-    if not is_admin(msg.from_user.id):
-        return
-    session = ADMIN_SESSION.get(msg.from_user.id)
-    if not session:
-        return
-    case = session["cases"][session["index"]]
-    mark_case_as_reviewed(case.get("case_id", ""), "skipped")
-    session["index"] += 1
-    await send_current_case(msg, state)
-
-
-@router.message(F.text == "❌ Отклонить")
-async def reject_case(msg: Message, state: FSMContext):
-    if not is_admin(msg.from_user.id):
-        return
-    session = ADMIN_SESSION.get(msg.from_user.id)
-    if not session:
-        return
-    case = session["cases"][session["index"]]
-    mark_case_as_reviewed(case.get("case_id", ""), "rejected")
-    session["index"] += 1
-    await msg.answer("❌ Кейс отклонён.", reply_markup=review_action_keyboard())
-    await send_current_case(msg, state)
+if __name__ == "__main__":
+    save_call_center_cases()
 ```
 
 ---
 
-**Последний шаг — почини существующий `needs_review.csv`** вручную. Открой его в VS Code и добавь первой строкой:
-
-```
-case_id,datetime,language,question,bot_answer,sources,status,reason,admin_answer,notes
-```
-
-Или запусти этот одноразовый скрипт:
-
-```python
-# fix_csv_header.py — запусти один раз из корня проекта
-from pathlib import Path
-
-path = Path("data/learning/needs_review.csv")
-content = path.read_text(encoding="utf-8-sig")
-
-header = "case_id,datetime,language,question,bot_answer,sources,status,reason,admin_answer,notes\n"
-
-if "case_id" not in content.split("\n")[0]:
-    path.write_text(header + content, encoding="utf-8-sig")
-    print("Заголовок добавлен!")
-else:
-    print("Заголовок уже есть.")
-```
-
-```bash
-python fix_csv_header.py
-```
-
----
-
-**Итого что исправлено:**
-
-| # | Проблема | Решение |
-|---|---|---|
-| 1 | Кейсы не отображались | `load_pending_cases` теперь проверяет наличие заголовка |
-| 2 | Многострочные ответы ломали CSV | `quoting=csv.QUOTE_ALL` + убираем `\n` из полей |
-| 3 | Нет даты в `approved.csv` | Добавлено поле `datetime` |
-| 4 | Добавление/удаление админов | Хранятся в `data/admins.txt`, кнопка «👥 Управление админами» |
-
-
-
-
-
-
-
-
-
-
-Для твоего проекта (**Telegram Bot + ChromaDB + PDF + Faktura API**) я бы рекомендовал не OpenClaw, а **Ollama + Qwen3 8B**.
-
-Причина простая:
-
-```text
-Qwen3 8B
-✓ русский
-✓ узбекский
-✓ английский
-✓ хорошо работает с инструкциями
-✓ легко подключается к Python
-✓ бесплатно
-✓ без лимитов
-```
-
----
-
-# Шаг 1. Проверить ноутбук
-
-Открой PowerShell:
-
-```powershell
-systeminfo
-```
-
-или:
-
-```powershell
-Get-ComputerInfo
-```
-
-Напиши мне:
-
-```text
-CPU:
-RAM:
-GPU:
-```
-
-Но примерно:
-
-### Если у тебя
-
-```text
-16 GB RAM
-```
-
-то запускаем:
-
-```text
-Qwen3:4b
-```
-
----
-
-### Если
-
-```text
-32 GB RAM
-```
-
-то:
-
-```text
-Qwen3:8b
-```
-
----
-
-### Если
-
-```text
-64 GB RAM
-```
-
-то:
-
-```text
-Qwen3:14b
-```
-
----
-
-# Шаг 2. Установка Ollama
-
-Скачать:
-
-[Ollama Official Website](https://ollama.com/download?utm_source=chatgpt.com)
-
-Установить как обычную программу.
-
----
-
-Проверить:
-
-```powershell
-ollama --version
-```
-
-Должно показать:
-
-```text
-ollama version ...
-```
-
----
-
-# Шаг 3. Скачать модель
-
-Для начала рекомендую:
-
-```powershell
-ollama pull qwen3:4b
-```
-
-или
-
-```powershell
-ollama pull qwen3:8b
-```
-
----
-
-Размер примерно:
-
-```text
-4b ≈ 2.5-3 ГБ
-8b ≈ 5-6 ГБ
-```
-
----
-
-# Шаг 4. Проверить модель
-
-Запусти:
-
-```powershell
-ollama run qwen3:4b
-```
-
-Напиши:
-
-```text
-Как создать ТТН в Faktura?
-```
-
-Если отвечает — всё работает.
-
-Выход:
-
-```text
-/bye
-```
-
----
-
-# Шаг 5. Установить библиотеку Python
-
-В проекте:
-
-```powershell
-pip install ollama
-```
-
----
-
-# Шаг 6. Создать новый файл
-
-Создай:
-
-```text
-app/llm/ollama_client.py
-```
-
----
-
-Код:
-
-```python
-from ollama import chat
-
-
-def ask_ollama(prompt: str) -> str:
-    response = chat(
-        model="qwen3:4b",
-        messages=[
-            {
-                "role": "user",
-                "content": prompt,
-            }
-        ],
-    )
-
-    return response["message"]["content"]
-```
-
----
-
-# Шаг 7. Проверка из Python
-
-Создай:
-
-```text
-test_ollama.py
-```
-
-Код:
-
-```python
-from app.llm.ollama_client import ask_ollama
-
-answer = ask_ollama(
-    "Что такое Faktura?"
-)
-
-print(answer)
-```
-
-Запуск:
-
-```powershell
-python test_ollama.py
-```
-
----
-
-# Шаг 8. Заменяем Gemini
-
-Сейчас у тебя примерно есть:
-
-```python
-from app.llm.gemini_client import ask_gemini
-
-answer = ask_gemini(prompt)
-```
-
-Меняем на:
-
-```python
-from app.llm.ollama_client import ask_ollama
-
-answer = ask_ollama(prompt)
-```
-
----
-
-# Шаг 9. Проверяем весь RAG
-
-Схема останется такой:
-
-```text
-Вопрос пользователя
-        ↓
-query_rewriter.py
-        ↓
-retriever.py
-        ↓
-ChromaDB
-        ↓
-контекст
-        ↓
-Ollama
-        ↓
-ответ
-```
-
----
-
-# Шаг 10. Настройка качества
-
-Когда заработает:
-
-```powershell
-ollama pull qwen3:8b
-```
-
-и меняем:
-
-```python
-model="qwen3:4b"
-```
-
-на
-
-```python
-model="qwen3:8b"
-```
-
-Качество станет заметно лучше.
-
----
-
-# Для твоего ноутбука
-
-Я бы начал именно так:
-
-```text
-Ollama
-+
-Qwen3:4b
-+
-ChromaDB
-+
-Faktura API
-```
-
-Потому что:
-
-* ставится за 10 минут;
-* не требует сервер;
-* не требует токены Google;
-* позволяет проверить всю архитектуру локально;
-* потом легко переносится на сервер без изменения логики проекта.
-
-После установки пришли характеристики ноутбука (`CPU`, `RAM`, `GPU`), и я подскажу, какую максимальную модель ты сможешь комфортно запускать локально.
-
-
-
-
-Если ты переходишь с **Gemini → Ollama + Qwen**, то хорошая новость: **80-90% проекта менять не придется**.
-
-У тебя уже есть правильная архитектура:
-
-```text
-Telegram
-↓
-bot_engine.py
-↓
-retriever.py
-↓
-ChromaDB
-↓
-generator.py
-↓
-LLM
-```
-
-Меняется только последний блок:
-
-```text
-Gemini
-↓
-Qwen
-```
-
----
-
-# Файл №1 (создать)
-
-## `app/llm/ollama_client.py`
+# Шаг 5. Добавь импорт raw cases в approved.csv
 
 Создай новый файл:
 
-```python
-from ollama import chat
-
-
-def ask_ollama(prompt: str) -> str:
-    response = chat(
-        model="qwen3:4b",  # позже можно qwen3:8b
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
-
-    return response["message"]["content"]
-```
-
----
-
-# Файл №2
-
-## `app/llm/generator.py`
-
-Это главный файл.
-
-Сейчас там примерно:
-
-```python
-from app.llm.gemini_client import ask_gemini
-```
-
-Меняем на:
-
-```python
-from app.llm.ollama_client import ask_ollama
-```
-
----
-
-Дальше ищем:
-
-```python
-answer = ask_gemini(prompt)
-```
-
-Меняем:
-
-```python
-answer = ask_ollama(prompt)
-```
-
----
-
-Пример:
-
-Было:
-
-```python
-try:
-    answer = ask_gemini(prompt)
-except Exception as e:
-    ...
-```
-
-Стало:
-
-```python
-try:
-    answer = ask_ollama(prompt)
-except Exception as e:
-    ...
-```
-
----
-
-# Файл №3
-
-## `requirements.txt`
-
-Добавить:
-
 ```text
-ollama
+app/learning/import_call_center_to_approved.py
 ```
 
-И выполнить:
+Код:
+
+```python
+import csv
+from pathlib import Path
+
+from app.learning.review_manager import save_approved_case
+
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+
+RAW_CALL_CENTER_PATH = BASE_DIR / "data" / "learning" / "call_center_cases_raw.csv"
+
+
+def import_call_center_to_approved(
+    min_question_len: int = 10,
+    min_answer_len: int = 30,
+    auto_approve: bool = False,
+) -> None:
+    """
+    Импортирует call center cases в approved.csv.
+
+    Важно:
+    auto_approve=False по умолчанию.
+    Лучше сначала посмотреть raw cases вручную.
+    """
+
+    if not RAW_CALL_CENTER_PATH.exists():
+        print(f"File not found: {RAW_CALL_CENTER_PATH}")
+        return
+
+    imported = 0
+    skipped = 0
+
+    with open(RAW_CALL_CENTER_PATH, mode="r", encoding="utf-8-sig", newline="") as file:
+        reader = csv.DictReader(file)
+
+        for row in reader:
+            question = row.get("question", "").strip()
+            answer = row.get("admin_answer", "").strip()
+            ticket_id = row.get("ticket_id", "").strip()
+            case_id = row.get("case_id", f"callcenter_{ticket_id}").strip()
+
+            if len(question) < min_question_len or len(answer) < min_answer_len:
+                skipped += 1
+                continue
+
+            if not auto_approve:
+                skipped += 1
+                continue
+
+            save_approved_case(
+                case_id=case_id,
+                question=question,
+                approved_answer=answer,
+                language=row.get("language", "ru"),
+                category=row.get("category", "call_center"),
+                source_type="call_center",
+                source_id=ticket_id,
+                status="approved",
+                notes="Imported from call center API.",
+            )
+
+            imported += 1
+
+    print(f"Imported: {imported}")
+    print(f"Skipped: {skipped}")
+
+
+if __name__ == "__main__":
+    # В первый раз лучше не автоаппрувить.
+    # После проверки raw CSV можно поставить auto_approve=True.
+    import_call_center_to_approved(auto_approve=False)
+```
+
+---
+
+# Как использовать
+
+## 1. Сначала собери реальные кейсы
 
 ```bash
-pip install ollama
+python -m app.faktura_api.call_center_api
+```
+
+Появится:
+
+```text
+data/learning/call_center_cases_raw.csv
 ```
 
 ---
 
-# Файл №4
+## 2. Открой raw CSV и проверь
 
-## `.env`
+Посмотри:
 
-Раньше:
-
-```env
-GEMINI_API_KEY=xxxxxxxx
+```text
+question
+admin_answer
 ```
 
-После перехода можно оставить, но уже не использовать.
-
-Дополнительно можно добавить:
-
-```env
-LLM_PROVIDER=ollama
-OLLAMA_MODEL=qwen3:4b
-```
+Если ответы нормальные, можно импортировать.
 
 ---
 
-# Файл №5 (рекомендую)
+## 3. Включи импорт в approved
 
-## `app/config.py`
+В файле:
 
-Сделай единое место настроек:
+```text
+app/learning/import_call_center_to_approved.py
+```
+
+внизу временно поменяй:
 
 ```python
-import os
-
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:4b")
+import_call_center_to_approved(auto_approve=False)
 ```
 
----
-
-Тогда в `ollama_client.py`:
+на:
 
 ```python
-from ollama import chat
-from app.config import OLLAMA_MODEL
-
-
-def ask_ollama(prompt: str) -> str:
-    response = chat(
-        model=OLLAMA_MODEL,
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
-
-    return response["message"]["content"]
+import_call_center_to_approved(auto_approve=True)
 ```
 
----
-
-# Что НЕ нужно менять
-
-Эти файлы остаются как есть:
-
-### ChromaDB
-
-```text
-app/rag/retriever.py
-```
-
----
-
-### PDF индексатор
-
-```text
-app/rag/index_builder.py
-```
-
----
-
-### PDF loader
-
-```text
-app/rag/pdf_loader.py
-```
-
----
-
-### splitter
-
-```text
-app/rag/text_splitter.py
-```
-
----
-
-### Telegram
-
-```text
-app/bot/handlers.py
-```
-
----
-
-### Faktura API
-
-```text
-app/api/*
-```
-
----
-
-### Review system
-
-```text
-app/review/*
-```
-
----
-
-### CSV logger
-
-```text
-app/logs/*
-```
-
----
-
-# Что желательно улучшить после перехода
-
-В `generator.py` сейчас, вероятно, промпт писался под Gemini.
-
-Для Qwen лучше использовать такой формат:
-
-```python
-prompt = f"""
-Ты помощник Faktura.uz.
-
-Отвечай только используя контекст.
-
-Если информации недостаточно,
-честно сообщи об этом.
-
-Язык ответа: {language}
-
-Контекст:
-{context}
-
-Вопрос:
-{question}
-"""
-```
-
----
-
-# Проверка после замены
-
-Создай файл:
-
-## `test_qwen.py`
-
-```python
-from app.llm.ollama_client import ask_ollama
-
-answer = ask_ollama(
-    "Что такое электронный документооборот?"
-)
-
-print(answer)
-```
-
-Запуск:
+Запусти:
 
 ```bash
-python test_qwen.py
+python -m app.learning.import_call_center_to_approved
 ```
-
-Если ответ появился — Ollama работает.
 
 ---
 
-# Полная схема после перехода
+## 4. Пересобери Chroma
+
+```bash
+python build_index.py
+```
+
+Теперь approved call center cases попадут в базу знаний.
+
+---
+
+# Нужно ли сохранять call center ответы сразу в approved.csv?
+
+**Нет, не сразу.**
+
+Лучший вариант:
 
 ```text
-User
-↓
-Telegram
-↓
-handlers.py
-↓
-bot_engine.py
-↓
-query_rewriter.py
-↓
-retriever.py
-↓
-ChromaDB
-↓
-generator.py
-↓
-ollama_client.py
-↓
-Qwen3
-↓
-Ответ
+call_center_cases_raw.csv  — всё как пришло из API
+approved.csv               — только проверенные хорошие ответы
+```
+
+Почему:
+
+```text
+1. Ответы операторов могут быть короткие.
+2. Там могут быть персональные данные.
+3. Может быть мусор из HTML.
+4. Может быть неполный ответ.
+5. Если сразу отправить это в Chroma, бот начнёт учиться на плохих данных.
 ```
 
 ---
 
-Я бы рекомендовал ещё один шаг: **не удалять Gemini сразу**, а сделать переключатель.
+# Ещё важное
+
+Сейчас в `test_approve_case.py` у тебя очень длинный ответ с кавычками, переносами и Markdown. Это нормально, но лучше после замены `review_manager.py` удалить старый `approved.csv`, потому что он уже мог быть создан с неправильными столбцами.
+
+В PowerShell:
+
+```powershell
+Remove-Item data\learning\approved.csv -ErrorAction SilentlyContinue
+```
+
+Потом:
+
+```bash
+python test_approve_case.py
+python build_index.py
+```
+
+---
+
+# Итог
+
+Тебе нужно сделать так:
+
+```text
+1. approved.csv — только чистые проверенные кейсы.
+2. call_center_cases_raw.csv — сырые реальные обращения.
+3. import_call_center_to_approved.py — переносит хорошие кейсы в approved.
+4. build_index.py — индексирует PDF + approved cases.
+```
+
+Это даст нормальное “обучение” без загрязнения базы плохими ответами.
+
+[1]: https://github.com/mrGwynbleidd/FakturaAssistentBot/tree/main/app/learning "FakturaAssistentBot/app/learning at main · mrGwynbleidd/FakturaAssistentBot · GitHub"
+[2]: https://github.com/mrGwynbleidd/FakturaAssistentBot/tree/main/app/faktura_api "FakturaAssistentBot/app/faktura_api at main · mrGwynbleidd/FakturaAssistentBot · GitHub"
+[3]: https://raw.githubusercontent.com/mrGwynbleidd/FakturaAssistentBot/main/app/learning/review_manager.py "raw.githubusercontent.com"
+[4]: https://raw.githubusercontent.com/mrGwynbleidd/FakturaAssistentBot/main/app/faktura_api/call_center_api.py "raw.githubusercontent.com"
+[5]: https://raw.githubusercontent.com/mrGwynbleidd/FakturaAssistentBot/main/app/rag/index_builder.py "raw.githubusercontent.com"
+
+
+
+
+!!!!!!!
+
+Да, это правильный следующий шаг. Сейчас админ-панель лучше перестроить так, чтобы она не была одним огромным `admin_handler.py`, а стала отдельным модулем с маленькими файлами по функциям.
+
+Главная идея:
+
+```text
+admin panel
+    ↓
+создать постоянный Q/A
+    ↓
+создать временную проблему / инцидент
+    ↓
+активировать режим “отвечать так на все похожие вопросы”
+    ↓
+бот сначала проверяет active_incidents
+    ↓
+если совпало — отвечает готовым ответом
+    ↓
+если нет — идёт в Faktura API / Chroma / Qwen
+```
+
+---
+
+# 1. Новая структура папок
+
+Я бы сделал так:
+
+```text
+app/
+├── admin/
+│   ├── __init__.py
+│   │
+│   ├── admin_router.py
+│   ├── admin_config.py
+│   │
+│   ├── texts/
+│   │   ├── __init__.py
+│   │   ├── ru.py
+│   │   ├── uz.py
+│   │   └── en.py
+│   │
+│   ├── keyboards/
+│   │   ├── __init__.py
+│   │   ├── main.py
+│   │   ├── knowledge.py
+│   │   ├── incidents.py
+│   │   └── review.py
+│   │
+│   ├── states/
+│   │   ├── __init__.py
+│   │   ├── knowledge_states.py
+│   │   ├── incident_states.py
+│   │   └── review_states.py
+│   │
+│   ├── handlers/
+│   │   ├── __init__.py
+│   │   ├── main_menu.py
+│   │   ├── knowledge_create.py
+│   │   ├── incidents_create.py
+│   │   ├── incidents_manage.py
+│   │   ├── review_cases.py
+│   │   └── stats.py
+│   │
+│   └── services/
+│       ├── __init__.py
+│       ├── knowledge_service.py
+│       ├── incident_service.py
+│       ├── review_service.py
+│       └── admin_access.py
+│
+├── learning/
+│   ├── approved_loader.py
+│   ├── review_manager.py
+│   ├── case_logger.py
+│   └── import_call_center_to_approved.py
+│
+├── core/
+│   ├── bot_engine.py
+│   └── emergency_answer_checker.py
+```
+
+---
+
+# 2. Что будет где лежать
+
+## `admin_router.py`
+
+Главный файл, который просто собирает все маленькие роутеры.
+
+```python
+from aiogram import Router
+
+from app.admin.handlers.main_menu import router as main_menu_router
+from app.admin.handlers.knowledge_create import router as knowledge_create_router
+from app.admin.handlers.incidents_create import router as incidents_create_router
+from app.admin.handlers.incidents_manage import router as incidents_manage_router
+from app.admin.handlers.review_cases import router as review_cases_router
+from app.admin.handlers.stats import router as stats_router
+
+
+admin_router = Router()
+
+admin_router.include_router(main_menu_router)
+admin_router.include_router(knowledge_create_router)
+admin_router.include_router(incidents_create_router)
+admin_router.include_router(incidents_manage_router)
+admin_router.include_router(review_cases_router)
+admin_router.include_router(stats_router)
+```
+
+А в `app/main.py` будет:
+
+```python
+from app.bot.handlers import router as user_router
+from app.admin.admin_router import admin_router
+
+dp.include_router(admin_router)
+dp.include_router(user_router)
+```
+
+---
+
+# 3. Постоянные Q/A и временные проблемы нужно разделить
+
+Это очень важно.
+
+У тебя будут два разных типа знаний.
+
+---
+
+## Тип 1. Постоянные знания
 
 Например:
 
-```python
-LLM_PROVIDER=gemini
+```text
+Вопрос:
+Как создать ТТН?
+
+Ответ:
+Для создания ТТН перейдите...
 ```
 
-или
+Это можно сохранять в:
 
-```python
-LLM_PROVIDER=ollama
+```text
+data/learning/approved.csv
 ```
 
-Тогда можно будет одной строкой в `.env` переключаться между моделями и сравнивать качество ответов на одинаковых вопросах. Это очень удобно на этапе тестирования Faktura Assistant.
+Потому что это стабильная база знаний.
+
+---
+
+## Тип 2. Временная проблема / инцидент
+
+Например:
+
+```text
+Проблема:
+Сбой в soliq.uz
+
+Ответ:
+Сейчас наблюдаются временные сбои на стороне soliq.uz. 
+Рекомендуем повторить отправку позже.
+```
+
+Это **нельзя** сохранять только в `approved.csv`, потому что через день проблема закончится, а бот продолжит так отвечать.
+
+Для этого нужен отдельный файл:
+
+```text
+data/admin/active_incidents.csv
+```
+
+или лучше:
+
+```text
+data/admin/incidents.csv
+```
+
+---
+
+# 4. Файлы данных
+
+Создай папку:
+
+```text
+data/admin/
+```
+
+Внутри:
+
+```text
+data/admin/
+├── admin_knowledge.csv
+├── incidents.csv
+├── incident_logs.csv
+└── admin_actions_log.csv
+```
+
+---
+
+# 5. `admin_knowledge.csv`
+
+Это ручные постоянные ответы от админа.
+
+Колонки:
+
+```csv
+knowledge_id,datetime,language,question,answer,category,tags,status,created_by,notes
+```
+
+Пример:
+
+```csv
+knowledge_id,datetime,language,question,answer,category,tags,status,created_by,notes
+kb_001,2026-06-15,ru,Как создать ТТН?,Для создания ТТН перейдите...,documents,ттн;накладная;создать,approved,123456789,
+```
+
+Потом эти записи можно импортировать в `approved.csv` или сразу индексировать вместе с approved cases.
+
+---
+
+# 6. `incidents.csv`
+
+Это временные активные проблемы.
+
+Колонки:
+
+```csv
+incident_id,datetime,language,title,problem_text,answer,keywords,match_mode,priority,status,start_at,end_at,created_by,notes
+```
+
+Пример:
+
+```csv
+incident_id,datetime,language,title,problem_text,answer,keywords,match_mode,priority,status,start_at,end_at,created_by,notes
+inc_001,2026-06-15,ru,Сбой Soliq,Не работает отправка в soliq,Сейчас наблюдаются временные сбои на стороне soliq.uz. Повторите отправку позже.,soliq;отправка;ошибка;сервер,contains,100,active,2026-06-15 09:00,2026-06-15 18:00,123456789,
+```
+
+---
+
+# 7. Функция “отвечать так на все вопросы по этой проблеме”
+
+Для этого нужен отдельный файл:
+
+```text
+app/core/emergency_answer_checker.py
+```
+
+Он будет работать **до Chroma, до API и до Qwen**.
+
+Схема:
+
+```text
+Вопрос пользователя
+    ↓
+Проверить active incidents
+    ↓
+Если совпали keywords
+    ↓
+Сразу вернуть готовый ответ
+    ↓
+Не вызывать Qwen / Gemini
+```
+
+То есть в `bot_engine.py` порядок должен быть такой:
+
+```python
+def process_user_question(question: str, ...):
+    language = detect_language(question)
+
+    emergency_answer = check_active_incidents(question, language)
+
+    if emergency_answer:
+        return {
+            "answer": emergency_answer,
+            "sources": [
+                {
+                    "source": "Admin active incident",
+                    "source_type": "incident",
+                }
+            ],
+            "sent_to_review": False,
+        }
+
+    # дальше уже обычный путь:
+    # 1. Faktura API
+    # 2. ChromaDB
+    # 3. Qwen/Gemini
+```
+
+Это решит твой кейс:
+
+```text
+Админ:
+“Сейчас сбой в Soliq. Всем, кто спрашивает про отправку/ошибку/soliq, отвечать вот так...”
+
+Пользователь:
+“Почему не отправляется счет-фактура?”
+
+Бот:
+“Сейчас наблюдаются временные сбои на стороне soliq.uz...”
+```
+
+---
+
+# 8. Какие кнопки должны быть в админ-панели
+
+Главное меню админа:
+
+```text
+➕ Добавить Q/A
+🚨 Добавить временную проблему
+📋 Активные проблемы
+✅ Review cases
+📊 Статистика
+⚙️ Настройки
+⬅️ Выйти
+```
+
+---
+
+# 9. Раздел “Добавить Q/A”
+
+Логика:
+
+```text
+Админ нажимает:
+➕ Добавить Q/A
+
+Бот:
+Введите вопрос
+
+Админ:
+Как создать ТТН?
+
+Бот:
+Введите правильный ответ
+
+Админ:
+Для создания ТТН перейдите...
+
+Бот:
+Выберите тип:
+1. Постоянное знание
+2. Временная проблема
+
+Админ:
+Постоянное знание
+
+Бот:
+Сохранено.
+```
+
+Сохраняем в:
+
+```text
+data/admin/admin_knowledge.csv
+```
+
+Или сразу в:
+
+```text
+data/learning/approved.csv
+```
+
+Моя рекомендация: сначала `admin_knowledge.csv`, потом отдельной функцией импортировать в `approved.csv`.
+
+---
+
+# 10. Раздел “Добавить временную проблему”
+
+Логика:
+
+```text
+Админ нажимает:
+🚨 Добавить временную проблему
+
+Бот:
+Введите название проблемы
+
+Админ:
+Сбой Soliq
+
+Бот:
+Введите ключевые слова через запятую
+
+Админ:
+soliq, ошибка, отправка, счет-фактура, сервер
+
+Бот:
+Введите ответ, который нужно показывать пользователям
+
+Админ:
+Сейчас наблюдаются временные сбои...
+
+Бот:
+До какого времени проблема активна?
+
+Админ:
+Сегодня до 18:00
+
+Бот:
+Проблема активирована.
+```
+
+Сохраняем в:
+
+```text
+data/admin/incidents.csv
+```
+
+---
+
+# 11. Раздел “Активные проблемы”
+
+Кнопки:
+
+```text
+📋 Активные проблемы
+```
+
+Бот показывает:
+
+```text
+1. Сбой Soliq
+Статус: active
+Ключевые слова: soliq, ошибка, отправка
+До: 18:00
+
+2. Техосмотр Faktura
+Статус: active
+Ключевые слова: вход, кабинет, недоступен
+До: 23:00
+```
+
+Под каждой проблемой:
+
+```text
+🔴 Отключить
+✏️ Изменить ответ
+⏰ Продлить
+🗑 Удалить
+```
+
+---
+
+# 12. Где хранить тексты
+
+Чтобы потом легко перевести кнопки и сообщения, нужно убрать все тексты из handlers.
+
+Не так:
+
+```python
+await message.answer("Введите вопрос")
+```
+
+А так:
+
+```python
+await message.answer(ADMIN_TEXTS[language]["enter_question"])
+```
+
+---
+
+Структура:
+
+```text
+app/admin/texts/
+├── ru.py
+├── uz.py
+└── en.py
+```
+
+---
+
+## `app/admin/texts/ru.py`
+
+```python
+ADMIN_TEXTS_RU = {
+    "admin_menu_title": "Админ-панель",
+    "add_qa": "➕ Добавить Q/A",
+    "add_incident": "🚨 Добавить временную проблему",
+    "active_incidents": "📋 Активные проблемы",
+    "review_cases": "✅ Review cases",
+    "stats": "📊 Статистика",
+    "settings": "⚙️ Настройки",
+    "exit": "⬅️ Выйти",
+
+    "enter_question": "Введите вопрос:",
+    "enter_answer": "Введите правильный ответ:",
+    "enter_incident_title": "Введите название проблемы:",
+    "enter_incident_keywords": "Введите ключевые слова через запятую:",
+    "enter_incident_answer": "Введите ответ, который бот должен показывать пользователям:",
+    "enter_incident_end_time": "До какого времени проблема активна?",
+
+    "saved_successfully": "Сохранено успешно.",
+    "incident_activated": "Временная проблема активирована.",
+    "incident_disabled": "Проблема отключена.",
+    "cancel": "Отмена",
+    "back": "Назад",
+}
+```
+
+---
+
+## `app/admin/texts/__init__.py`
+
+```python
+from app.admin.texts.ru import ADMIN_TEXTS_RU
+from app.admin.texts.uz import ADMIN_TEXTS_UZ
+from app.admin.texts.en import ADMIN_TEXTS_EN
 
 
+def get_admin_text(key: str, language: str = "ru") -> str:
+    texts = {
+        "ru": ADMIN_TEXTS_RU,
+        "uz": ADMIN_TEXTS_UZ,
+        "en": ADMIN_TEXTS_EN,
+    }
+
+    return texts.get(language, ADMIN_TEXTS_RU).get(key, key)
+```
+
+---
+
+# 13. Где хранить кнопки
+
+```text
+app/admin/keyboards/
+├── main.py
+├── knowledge.py
+├── incidents.py
+└── review.py
+```
+
+---
+
+## `main.py`
+
+```python
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+
+from app.admin.texts import get_admin_text
 
 
+def admin_main_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
+    keyboard = [
+        [
+            KeyboardButton(text=get_admin_text("add_qa", language)),
+            KeyboardButton(text=get_admin_text("add_incident", language)),
+        ],
+        [
+            KeyboardButton(text=get_admin_text("active_incidents", language)),
+            KeyboardButton(text=get_admin_text("review_cases", language)),
+        ],
+        [
+            KeyboardButton(text=get_admin_text("stats", language)),
+            KeyboardButton(text=get_admin_text("settings", language)),
+        ],
+        [
+            KeyboardButton(text=get_admin_text("exit", language)),
+        ],
+    ]
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+    )
+```
+
+---
+
+# 14. FSM states отдельно
+
+Чтобы `admin_handler.py` не разрастался, состояния тоже нужно вынести.
+
+```text
+app/admin/states/
+├── knowledge_states.py
+├── incident_states.py
+└── review_states.py
+```
+
+---
+
+## `knowledge_states.py`
+
+```python
+from aiogram.fsm.state import StatesGroup, State
 
 
+class AddKnowledgeStates(StatesGroup):
+    waiting_for_question = State()
+    waiting_for_answer = State()
+    waiting_for_category = State()
+    waiting_for_confirmation = State()
+```
+
+---
+
+## `incident_states.py`
+
+```python
+from aiogram.fsm.state import StatesGroup, State
 
 
-!!!!
-не работает api
-кнопка назад при английском и узбекском не работает
-жирный текст
-модель еще тупит
-посчитать стоимость модели и сервера
-админ панель для просмотра плохих ответов
-авторизация процессов
-фото запрос
+class AddIncidentStates(StatesGroup):
+    waiting_for_title = State()
+    waiting_for_keywords = State()
+    waiting_for_answer = State()
+    waiting_for_end_time = State()
+    waiting_for_confirmation = State()
+```
 
+---
 
+# 15. Services отдельно от handlers
+
+Handlers должны только принимать сообщения.
+
+Плохой вариант:
+
+```python
+@router.message(...)
+async def add_incident(message):
+    open csv
+    write row
+    validate
+    format
+    save
+```
+
+Хороший вариант:
+
+```python
+@router.message(...)
+async def add_incident(message):
+    incident_service.save_incident(...)
+```
+
+---
+
+Сервисы:
+
+```text
+app/admin/services/
+├── knowledge_service.py
+├── incident_service.py
+├── review_service.py
+└── admin_access.py
+```
+
+---
+
+## `knowledge_service.py`
+
+Функции:
+
+```python
+save_admin_knowledge(...)
+list_admin_knowledge(...)
+delete_admin_knowledge(...)
+export_knowledge_to_approved(...)
+```
+
+---
+
+## `incident_service.py`
+
+Функции:
+
+```python
+save_incident(...)
+list_active_incidents(...)
+disable_incident(...)
+update_incident_answer(...)
+extend_incident(...)
+find_matching_incident(...)
+```
+
+---
+
+## `admin_access.py`
+
+Функции:
+
+```python
+is_admin(user_id: int) -> bool
+get_admin_language(user_id: int) -> str
+```
+
+---
+
+# 16. Как это будет работать в bot_engine
+
+Итоговая логика ответа бота должна быть такой:
+
+```text
+1. Пользователь задал вопрос
+2. Проверяем активные проблемы
+3. Если проблема найдена — отвечаем готовым admin answer
+4. Если нет — проверяем Faktura API
+5. Если API не нужен — ищем в ChromaDB
+6. Генерируем ответ через Qwen/Gemini
+7. Логируем вопрос и ответ
+8. Если ответ слабый — отправляем в review
+```
+
+---
+
+# 17. Финальная архитектура знаний
+
+В итоге у тебя будет 4 уровня знаний:
+
+```text
+1. active incidents
+   Срочные временные ответы.
+   Проверяются первыми.
+
+2. Faktura API
+   Реальные данные из API.
+
+3. approved.csv
+   Проверенные ответы операторов и админов.
+
+4. PDF база
+   Официальные инструкции Faktura Wiki.
+```
+
+Порядок приоритета:
+
+```text
+active incidents
+    ↓
+Faktura API
+    ↓
+approved cases
+    ↓
+PDF knowledge base
+    ↓
+Qwen/Gemini
+```
+
+---
+
+# 18. Что делать сейчас
+
+Сейчас не нужно сразу писать огромный код. Сначала создай структуру:
+
+```text
+app/admin/
+├── admin_router.py
+├── admin_config.py
+├── texts/
+├── keyboards/
+├── states/
+├── handlers/
+└── services/
+```
+
+И данные:
+
+```text
+data/admin/
+├── admin_knowledge.csv
+├── incidents.csv
+├── incident_logs.csv
+└── admin_actions_log.csv
+```
+
+После этого можно спокойно переносить функции из большого `admin_handler.py` по частям:
+
+```text
+admin_handler.py
+    ↓
+main_menu.py
+knowledge_create.py
+incidents_create.py
+incidents_manage.py
+review_cases.py
+stats.py
+```
+
+Так проект станет нормальным, расширяемым и готовым к переводу интерфейса.
