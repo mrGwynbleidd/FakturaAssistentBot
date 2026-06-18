@@ -1,0 +1,341 @@
+
+
+Проверяем на сервере в 3 местах:
+1. Создалась ли папка с фото
+2. Появились ли сами .jpg файлы
+3. Записалась ли строка в group_photos.csv
+Ниже команды для сервера/Linux.
+
+
+⸻
+
+
+1. Зайди в папку проекта
+cd /path/to/FakturaAssistentBot
+Например:
+cd ~/FakturaAssistentBot
+
+
+⸻
+
+
+2. Проверь, что бот запущен
+Если запускаешь через systemd:
+systemctl status faktura-bot
+Если через screen:
+screen -ls
+Если через обычный процесс:
+ps aux | grep python
+
+
+⸻
+
+
+3. Отправь фото в Telegram-группу
+Отправь любое тестовое фото в группу, где стоит бот.
+Важно: если бот в группе не видит фото, отключи Privacy Mode через @BotFather:
+/setprivacy
+выбрать бота
+Disable
+Потом удали бота из группы и добавь заново.
+
+
+⸻
+
+
+4. Проверь папку с фото
+ls -lah data/group_photos
+Если фото сохраняются по датам, проверь сегодняшнюю папку:
+ls -lah data/group_photos/$(date +%F)
+Должны появиться файлы типа:
+123455_chat_-100123456_user_123456_msg_77_AgAC....jpg
+
+
+⸻
+
+
+5. Найди последние сохранённые фото
+find data/group_photos -type f -name "*.jpg" -printf "%TY-%Tm-%Td %TH:%TM %p\n" | sort | tail -20
+Если сервер не поддерживает -printf, используй:
+find data/group_photos -type f -name "*.jpg" | tail -20
+
+
+⸻
+
+
+6. Проверь лог CSV
+ls -lah data/raw/group_photos.csv
+Открыть последние строки:
+tail -n 5 data/raw/group_photos.csv
+Там должны быть поля:
+datetime,chat_id,chat_title,user_id,username,full_name,message_id,caption,file_id,file_unique_id,saved_path
+
+
+⸻
+
+
+7. Проверить количество сохранённых фото
+find data/group_photos -type f | wc -l
+Проверить количество строк в логе:
+wc -l data/raw/group_photos.csv
+Если в CSV 1 строка — это только заголовок. Если 2 и больше — уже есть сохранённые фото.
+
+
+⸻
+
+
+8. Проверить, включён ли read-only
+cat data/admin/read_only_settings.json
+Должно быть, например:
+{
+  "mode": "all",
+  "chat_ids": [],
+  "updated_at": "2026-06-17 15:10:00",
+  "updated_by": "123456789"
+}
+Режимы:
+"off"      — бот отвечает нормально
+"all"      — бот молчит везде и сохраняет фото
+"selected" — бот молчит только в выбранных чатах
+
+
+⸻
+
+
+9. Проверить выбранные чаты
+Если стоит:
+"mode": "selected"
+то в chat_ids должен быть ID нужной группы:
+"chat_ids": ["-1001234567890"]
+Посмотреть ID текущего чата можно через админ-команду /readonly, если ты добавил кнопку “Добавить текущий чат”.
+
+
+⸻
+
+
+10. Проверить логи бота в реальном времени
+Если systemd:
+journalctl -u faktura-bot -f
+Если запускаешь вручную:
+python -m app.main
+После отправки фото в группу в логах не обязательно будет сообщение, если мы не добавляли print. Но файл должен появиться в data/group_photos.
+
+
+⸻
+
+
+Если фото не сохраняется
+Проверь по порядку:
+cat data/admin/read_only_settings.json
+Если там:
+"mode": "off"
+то включи read-only через админку:
+/readonly
+→ 1️⃣ Read-only везде
+Или выбранный режим:
+/readonly
+→ 2️⃣ Read-only в выбранных чатах
+→ ➕ Добавить текущий чат
+
+
+⸻
+
+
+Проверь, что есть файл:
+ls -lah app/bot/photo_collector.py
+Проверь, что есть middleware:
+ls -lah app/bot/read_only_middleware.py
+Проверь, что middleware подключён в app/main.py:
+grep -n "ReadOnlyMiddleware" app/main.py
+Должно найти примерно:
+from app.bot.read_only_middleware import ReadOnlyMiddleware
+user_router.message.middleware(ReadOnlyMiddleware())
+
+
+⸻
+
+
+Самая быстрая проверка
+После отправки фото в группу выполни:
+find data/group_photos -type f | tail -5 && tail -n 5 data/raw/group_photos.csv
+Если видишь путь к .jpg и строку в CSV — всё работает.
+
+
+
+
+
+
+
+
+
+
+
+read_only_middleware.py — это новый файл, который я предложила добавить в папку:
+app/bot/read_only_middleware.py
+Он нужен не для логов, а для режима read-only:
+read-only включён
+→ бот получает сообщение
+→ если это фото, вызывает save_group_photo()
+→ фото сохраняется
+→ бот НЕ отвечает пользователю
+Сам middleware не сохраняет фото напрямую. Он только вызывает функцию из файла:
+app/bot/photo_collector.py
+А лог в CSV пишет:
+app/logs/photo_logger.py
+То есть цепочка такая:
+app/bot/read_only_middleware.py
+        ↓
+app/bot/photo_collector.py
+        ↓
+data/group_photos/...
+data/raw/group_photos.csv
+
+
+⸻
+
+
+1. Проверь, есть ли эти 3 файла
+В PowerShell из корня проекта:
+dir app\bot\read_only_middleware.py
+dir app\bot\photo_collector.py
+dir app\logs\photo_logger.py
+Если какого-то файла нет — фото не будет сохраняться.
+
+
+⸻
+
+
+2. Проверь, подключён ли middleware в 
+app/main.py
+В PowerShell:
+findstr /n "ReadOnlyMiddleware" app\main.py
+Должно быть примерно так:
+from app.bot.read_only_middleware import ReadOnlyMiddleware
+
+user_router.message.middleware(ReadOnlyMiddleware())
+Важно: middleware надо подключать только к user_router, не к admin_router.
+Пример:
+from app.bot.handlers import router as user_router
+from app.admin.admin_router import admin_router
+from app.bot.read_only_middleware import ReadOnlyMiddleware
+
+user_router.message.middleware(ReadOnlyMiddleware())
+
+dp.include_router(admin_router)
+dp.include_router(user_router)
+
+
+⸻
+
+
+3. Проверь, включён ли read-only
+Открой файл:
+data/admin/read_only_settings.json
+Там должно быть:
+{
+  "mode": "all",
+  "chat_ids": [],
+  "updated_at": "...",
+  "updated_by": "..."
+}
+или для выбранных чатов:
+{
+  "mode": "selected",
+  "chat_ids": ["-1001234567890"],
+  "updated_at": "...",
+  "updated_by": "..."
+}
+Если там:
+"mode": "off"
+то middleware пропускает сообщения дальше и не сохраняет фото через read-only.
+
+
+⸻
+
+
+4. Проверь сохранение фото вручную
+После отправки фото в группу выполни:
+dir data\group_photos
+Если фото сохраняются по датам:
+dir data\group_photos\*
+Потом:
+dir data\group_photos -Recurse
+И проверь CSV:
+Get-Content data\raw\group_photos.csv -Tail 5
+Если в CSV есть строка, но файла нет — проблема в photo_collector.py, именно в скачивании файла.
+
+
+⸻
+
+
+5. Проверь 
+app/bot/read_only_middleware.py
+Файл должен быть таким:
+from typing import Any, Awaitable, Callable
+
+from aiogram import BaseMiddleware
+from aiogram.types import Message
+
+from app.admin.services.read_only_service import is_read_only_for_chat
+from app.bot.photo_collector import save_group_photo
+
+
+class ReadOnlyMiddleware(BaseMiddleware):
+    async def __call__(
+        self,
+        handler: Callable[[Message, dict[str, Any]], Awaitable[Any]],
+        event: Message,
+        data: dict[str, Any],
+    ) -> Any:
+        if not isinstance(event, Message):
+            return await handler(event, data)
+
+        if not is_read_only_for_chat(event.chat.id):
+            return await handler(event, data)
+
+        if event.photo:
+            await save_group_photo(event)
+
+        return None
+
+
+⸻
+
+
+6. Для точной проверки добавь временный print
+В read_only_middleware.py временно сделай так:
+if event.photo:
+    print("PHOTO DETECTED IN READ ONLY:", event.chat.id, event.message_id)
+    saved_path = await save_group_photo(event)
+    print("PHOTO SAVED TO:", saved_path)
+То есть блок будет:
+if event.photo:
+    print("PHOTO DETECTED IN READ ONLY:", event.chat.id, event.message_id)
+    saved_path = await save_group_photo(event)
+    print("PHOTO SAVED TO:", saved_path)
+Потом запусти бота:
+python -m app.main
+Отправь фото в группу.
+Если в терминале появится:
+PHOTO DETECTED IN READ ONLY: -100...
+PHOTO SAVED TO: D:\code\python\faktura_bot\data\group_photos\...
+значит фото сохраняется.
+Если PHOTO DETECTED не появляется — бот вообще не получает фото. Тогда проблема в Telegram privacy mode или middleware не подключён.
+
+
+⸻
+
+
+7. Самая частая причина
+Если бот в группе, нужно отключить Privacy Mode через @BotFather:
+/setprivacy
+→ выбрать бота
+→ Disable
+Потом лучше удалить бота из группы и добавить заново.
+
+
+⸻
+
+
+Итог: read_only_middleware.py — это файл-перехватчик.
+Он нужен, чтобы в read-only режиме бот молчал, но всё равно сохранял фото. Само сохранение должно быть в photo_collector.py.

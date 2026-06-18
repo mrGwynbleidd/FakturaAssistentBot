@@ -1,8 +1,6 @@
 ﻿{
-  "mode": "selected",
-  "chat_ids": [
-    "-100123456789"
-  ],
+  "mode": "all",
+  "chat_ids": [],
   "updated_at": "2026-06-18 15:02:28",
   "updated_by": "677539972"
 }

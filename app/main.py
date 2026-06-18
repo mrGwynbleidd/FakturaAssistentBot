@@ -25,6 +25,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.client.session.aiohttp import AiohttpSession
 
 
+
+
 async def main():
     logger.info("🚀 Бот запускается...")
 
@@ -37,6 +39,9 @@ async def main():
         from app.bot.handlers import router as user_router
         from app.admin.admin_router import admin_router
         from app.bot.group_handlers import group_router
+        from app.bot.read_only_middleware import ReadOnlyMiddleware
+
+        user_router.message.middleware(ReadOnlyMiddleware())
 
         session = AiohttpSession()
         bot = Bot(token=TELEGRAM_BOT_TOKEN, session=session)
