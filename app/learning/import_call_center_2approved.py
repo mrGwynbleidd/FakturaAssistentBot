@@ -11,7 +11,7 @@ from app.learning.review_manager import save_approved_case
 BASE_DIR = Path(__file__).resolve().parents[2]
 
 #path where cases are storing
-RAW_CALL_CENTER_PATH = BASE_DIR / "data" / "learning" / "call_center_cases.csv"
+RAW_CALL_CENTER_PATH = BASE_DIR / "data" / "learning" / "call_center_cases_raw.csv"
 
 
 def import_callcenter_approved(
@@ -49,7 +49,7 @@ def import_callcenter_approved(
                 question=question,
                 approved_answer=answer,
                 language=row.get("language", "ru"),
-                categoty = row.get("category", "call_center"),
+                category=row.get("category", "call_center"),
                 source_type="call_center",
                 source_id=ticket_id,
                 status="approved",

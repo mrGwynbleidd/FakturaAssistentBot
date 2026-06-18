@@ -14,6 +14,8 @@ from app.faktura_api.router import should_use_faktura_api, detect_api_intent
 from app.faktura_api.api_answer import get_api_context
 from app.rag.api_generator import generate_api_answer
 
+from app.core.emergency_answer_checker import check_active_incidents
+
 REVIEW_DISTANCE_THRESHOLD = 1.25
 
 # check if any source is flagged as CRITICAL (e.g., sync mismatch)
@@ -113,6 +115,21 @@ def process_user_question(question: str, save_to_csv: bool = True, save_review_c
         }
 
     language = forced_language or detect_language(question)
+
+    incident_result = check_active_incidents(
+        question=question,
+        language=language,
+    )
+
+    if incident_result:
+        return {
+            "answer": incident_result["answer"],
+            "sources": incident_result["sources"],
+            "sent_to_review": False,
+            "review_case_id": None,
+            "review_reason": None,
+        }
+
     log.info(f"❓ Вопрос [{language.upper()}]: {question[:80]}")
 
     context = ""

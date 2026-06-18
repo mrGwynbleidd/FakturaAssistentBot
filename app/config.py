@@ -23,7 +23,9 @@ API_PARAM= os.getenv("API_PARAM")
 
 CALL_CENTER_DOMAIN = os.getenv("CALL_CENTER_DOMAIN")
 
-ADMIN_IDS=os.getenv("ADMIN_IDS")
+ADMIN_IDS=os.getenv("ADMIN_IDS", "")
+
+
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY not found in .env")
 
@@ -36,5 +38,4 @@ COLLECT_GROUP_PHOTOS_ONLY = (
 )
 
 GROUP_PHOTO_SAVE_DIR = os.getenv("GROUP_PHOTOS_SAVE_DIR", "data/group_photos",)
-
 

@@ -14,8 +14,6 @@ from app.bot.markdown_utils import safe_markdown_answer
 
 from app.bot.texts import get_text
 
-from app.config import COLLECT_GROUP_PHOTOS_ONLY
-from app.bot.photo_collector import save_group_photo
 
 router = Router()
 db = Dispatcher()
@@ -246,11 +244,8 @@ async def set_en_language(message: Message):
 
 @router.message(F.photo)
 async def photo_handler(message: Message):
-
-    if COLLECT_GROUP_PHOTOS_ONLY:
-        await save_group_photo(message)
-        return
-    
+    # Group photos are now handled by group_handlers.group_router
+    # (registered before this router in main.py, so group messages never reach here)
     return
 
 
@@ -260,9 +255,7 @@ async def photo_handler(message: Message):
 
 @router.message(F.text)
 async def question_handler(msg: Message):
-
-    if COLLECT_GROUP_PHOTOS_ONLY:
-        return
+    # Group text messages are handled by group_handlers.group_router (registered first)
 
     #get user question
     user_question = msg.text.strip()
@@ -375,6 +368,7 @@ from app.core.bot_engine import process_user_image
 @router.message(F.photo)
 async def photo_handler(msg: Message):
 
+    ########
     if COLLECT_GROUP_PHOTOS_ONLY:
         return
 

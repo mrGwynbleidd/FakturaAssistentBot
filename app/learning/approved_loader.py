@@ -38,7 +38,7 @@ def load_approved_cases() -> list[dict]:
             category = row.get("category", "general").strip()
             case_id = row.get("case_id", "").strip()
             source_type = row.get("source_type", "admin_review").strip()
-            source_id = row.get("source_id", "case_id").strip()
+            source_id = row.get("source_id", "").strip()
 
             #if question or answer is empty
             if not question or not answer:

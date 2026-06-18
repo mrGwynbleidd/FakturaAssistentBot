@@ -49,7 +49,7 @@ def get_access_token() -> str:
 
     headers = {
         "Content-Type": "application/x-www-form-urlencoded",
-        "Accept": "applecation/json",
+        "Accept": "application/json",
     }
 
     response = requests.post(

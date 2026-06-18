@@ -92,11 +92,7 @@ def build_index() -> None:
             #add chunk
             texts.append(chunk)
 
-            if not isinstance(doc, dict):
-                return doc
-            
-
-            chunk_metadata = doc.get("matadata", {}).copy()
+            chunk_metadata = doc.get("metadata", {}).copy()
             chunk_metadata["source"] = source
             #add source
             metadatas.append(chunk_metadata)

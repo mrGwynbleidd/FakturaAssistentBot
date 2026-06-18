@@ -34,15 +34,17 @@ async def main():
         if HF_TOKEN:
             os.environ["HF_TOKEN"] = HF_TOKEN
 
-        from app.bot.handlers import router
-        from app.bot.admin_handlers import router as admin_router
+        from app.bot.handlers import router as user_router
+        from app.admin.admin_router import admin_router
+        from app.bot.group_handlers import group_router
 
         session = AiohttpSession()
         bot = Bot(token=TELEGRAM_BOT_TOKEN, session=session)
         dp = Dispatcher(storage=MemoryStorage())
 
         dp.include_router(admin_router)
-        dp.include_router(router)
+        dp.include_router(group_router)   # group Q&A learning — before main router
+        dp.include_router(user_router)
 
         logger.info("✅ Бот запущен и ждёт сообщений")
         await dp.start_polling(bot)

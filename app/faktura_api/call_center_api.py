@@ -109,11 +109,7 @@ def build_qa(ticket: dict) -> dict | None:
 
     if not posts:
         return None
-    
-    if not isinstance(posts, dict):
-        return {}
 
-    ###
     posts.sort(key=lambda post: post.get("id", 0))
 
     questions = []
@@ -122,7 +118,7 @@ def build_qa(ticket: dict) -> dict | None:
     for post in posts:
 
         if not isinstance(post, dict):
-            return post
+            continue
 
         text = strip_html(post.get("text", ""))
 
@@ -149,7 +145,7 @@ def build_qa(ticket: dict) -> dict | None:
         "question": question,
         "admin_answer": answer,
         "category": "call_center",
-        "soure_type": "call_center",
+        "source_type": "call_center",
         "source_id": str(ticket_id),
         "status": "raw",
     }
@@ -195,7 +191,7 @@ def save_callcenter_cases(max_pages: int | None) -> None:
 
     
     with open(OUTPUT_CSV, "w", newline="", encoding="utf-8-sig") as file:
-        writer = csv.DictWriter(file, fieldnames=RAW_FIELDNAMES, quoting=csv.QUOTE_ALL,)
+        writer = csv.DictWriter(file, fieldnames=RAW_FIELDNAMES, quoting=csv.QUOTE_ALL, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
 

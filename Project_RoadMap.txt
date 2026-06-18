@@ -439,3 +439,410 @@ python -m app.main
 
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+У тебя две разные ошибки.
+Ошибка 1
+TypeError: incident_match_mode() missing 1 required positional argument: 'state'
+Причина: в incidents_create.py у тебя перепутались названия.
+Ты вызываешь:
+reply_markup=incident_match_mode(language)
+А incident_match_mode — это не клавиатура, а handler-функция, которой нужны message и state.
+Нужно вызывать:
+reply_markup=incident_match_mode_keyboard(language)
+
+
+⸻
+
+
+1. Исправь 
+app/admin/handlers/incidents_create.py
+Найди импорт клавиатур. Должно быть так:
+from app.admin.keyboards.incidents import (
+    incident_match_mode_keyboard,
+    incident_after_save_keyboard,
+)
+Теперь найди место примерно около строки 194.
+Сейчас у тебя, скорее всего, так:
+await message.answer(
+    "Выберите режим совпадения:\n"
+    "contains — если вопрос содержит хотя бы одно ключевое слово.\n"
+    "all_keywords — если вопрос содержит все ключевые слова.",
+    reply_markup=incident_match_mode(language),
+)
+Замени на:
+await message.answer(
+    "Выберите режим совпадения:\n"
+    "contains — если вопрос содержит хотя бы одно ключевое слово.\n"
+    "all_keywords — если вопрос содержит все ключевые слова.",
+    reply_markup=incident_match_mode_keyboard(language),
+)
+Потом ниже найди функцию:
+async def incident_match_mode(message: Message, state: FSMContext):
+И переименуй её вот так:
+async def incident_match_mode_handler(message: Message, state: FSMContext):
+Итоговый блок должен быть таким:
+@router.message(AddIncidentStates.waiting_for_match_mode)
+async def incident_match_mode_handler(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id if message.from_user else None):
+        return
+
+    language = get_admin_language(message.from_user.id if message.from_user else None)
+
+    if is_cancel_text(message.text):
+        await state.clear()
+        await message.answer(
+            get_admin_text("incident_cancelled", language),
+            reply_markup=incident_after_save_keyboard(language),
+        )
+        return
+
+    match_mode = (message.text or "contains").strip()
+
+    if match_mode not in {"contains", "all_keywords"}:
+        match_mode = "contains"
+
+    await state.update_data(match_mode=match_mode)
+
+    data = await state.get_data()
+
+    preview = (
+        f"{get_admin_text('incident_preview_title', language)}\n\n"
+        f"Название: {data.get('title', '')}\n"
+        f"Проблема: {data.get('problem_text', '')}\n"
+        f"Ключевые слова: {data.get('keywords', '')}\n"
+        f"Режим: {data.get('match_mode', 'contains')}\n"
+        f"Активна до: {data.get('end_at', '') or 'не указано'}\n\n"
+        f"Ответ пользователям:\n{data.get('answer', '')}"
+    )
+
+    await state.set_state(AddIncidentStates.waiting_for_confirmation)
+
+    await message.answer(
+        preview,
+        reply_markup=admin_confirm_keyboard(language),
+    )
+
+
+⸻
+
+
+Ошибка 2
+TypeError: descriptor 'strftime' for 'datetime.date' objects doesn't apply to a 'str' object
+Причина: в incident_service.py у тебя написано:
+return datetime.strftime(value, date_format)
+Это неправильно.
+Нужно:
+return datetime.strptime(value, date_format)
+strftime — делает строку из даты.
+strptime — делает дату из строки.
+
+
+⸻
+
+
+2. Исправь 
+app/admin/services/incident_service.py
+Найди функцию:
+def parse_datetime_or_none(value: str | None) -> datetime | None:
+И полностью замени её на эту:
+def parse_datetime_or_none(value: str | None) -> datetime | None:
+    if value is None:
+        return None
+
+    value = str(value).strip()
+
+    if not value:
+        return None
+
+    if value.lower() in {"none", "нет", "yoq", "yo'q", "yo‘q", "no", "-"}:
+        return None
+
+    formats = [
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d %H:%M:%S",
+        "%d.%m.%Y %H:%M",
+        "%d.%m.%Y %H:%M:%S",
+    ]
+
+    for date_format in formats:
+        try:
+            return datetime.strptime(value, date_format)
+        except ValueError:
+            continue
+
+    return None
+
+
+⸻
+
+
+3. Быстрая проверка
+После исправления выполни:
+python -c "from app.admin.services.incident_service import parse_datetime_or_none; print(parse_datetime_or_none('2026-06-18 18:00'))"
+Должно вывести дату, примерно:
+2026-06-18 18:00:00
+Потом проверь import handler:
+python -c "from app.admin.handlers.incidents_create import router; print('incidents_create ok')"
+Потом:
+python -c "from app.admin.services.incident_service import list_active_incidents; print(list_active_incidents())"
+
+
+⸻
+
+
+4. Перезапусти бота
+python -m app.main
+
+
+⸻
+
+
+Самое главное
+В incidents_create.py не должно остаться вот такого вызова:
+incident_match_mode(language)
+Должно быть только:
+incident_match_mode_keyboard(language)
+А handler-функция должна называться:
+incident_match_mode_handler
+
+
+!!!!!!!!!!!!!!!!!!!!!!1
+
+Да, его нужно создать вручную. Это новый файл.
+Создай файл:
+app/admin/handlers/read_only.py
+И вставь туда полностью этот код:
+from aiogram import Router, F
+from aiogram.filters import Command
+from aiogram.types import Message
+
+from app.admin.services.admin_access import is_admin, get_admin_language
+from app.admin.services.read_only_service import (
+    set_read_only_mode,
+    add_read_only_chat,
+    remove_read_only_chat,
+    format_read_only_status,
+)
+from app.admin.texts import get_admin_text
+from app.admin.keyboards.read_only import read_only_keyboard
+
+
+router = Router(name="admin_read_only")
+
+
+def text_values(key: str) -> list[str]:
+    values = [
+        get_admin_text(key, "ru"),
+        get_admin_text(key, "uz"),
+        get_admin_text(key, "en"),
+        key,
+    ]
+
+    aliases = {
+        "btn_read_only": [
+            "readonly",
+            "read_only",
+            "btn_read_only",
+            "🔐 Read-only режим",
+        ],
+        "btn_read_only_all": [
+            "1",
+            "all",
+            "read_only_all",
+            "1️⃣ Read-only везде",
+        ],
+        "btn_read_only_selected": [
+            "2",
+            "selected",
+            "read_only_selected",
+            "2️⃣ Read-only в выбранных чатах",
+        ],
+        "btn_read_only_off": [
+            "3",
+            "off",
+            "read_only_off",
+            "3️⃣ Read-only отключить",
+        ],
+        "btn_read_only_add_current_chat": [
+            "add_current_chat",
+            "➕ Добавить текущий чат",
+        ],
+        "btn_read_only_remove_current_chat": [
+            "remove_current_chat",
+            "➖ Удалить текущий чат",
+        ],
+        "btn_read_only_list_chats": [
+            "list_read_only_chats",
+            "📋 Список read-only чатов",
+        ],
+    }
+
+    values.extend(aliases.get(key, []))
+
+    return list(set(values))
+
+
+async def send_read_only_menu(message: Message) -> None:
+    if not is_admin(message.from_user.id if message.from_user else None):
+        await message.answer(get_admin_text("access_denied", "ru"))
+        return
+
+    language = get_admin_language(message.from_user.id if message.from_user else None)
+
+    await message.answer(
+        format_read_only_status(language),
+        reply_markup=read_only_keyboard(language),
+    )
+
+
+@router.message(Command("readonly"))
+@router.message(F.text.in_(text_values("btn_read_only")))
+async def read_only_menu(message: Message):
+    await send_read_only_menu(message)
+
+
+@router.message(F.text.in_(text_values("btn_read_only_all")))
+async def read_only_all(message: Message):
+    if not is_admin(message.from_user.id if message.from_user else None):
+        return
+
+    admin_id = message.from_user.id if message.from_user else None
+    language = get_admin_language(admin_id)
+
+    set_read_only_mode("all", admin_id=admin_id)
+
+    await message.answer(
+        get_admin_text("readonly_enabled_all", language),
+        reply_markup=read_only_keyboard(language),
+    )
+
+
+@router.message(F.text.in_(text_values("btn_read_only_selected")))
+async def read_only_selected(message: Message):
+    if not is_admin(message.from_user.id if message.from_user else None):
+        return
+
+    admin_id = message.from_user.id if message.from_user else None
+    language = get_admin_language(admin_id)
+
+    set_read_only_mode("selected", admin_id=admin_id)
+
+    await message.answer(
+        get_admin_text("readonly_enabled_selected", language),
+        reply_markup=read_only_keyboard(language),
+    )
+
+
+@router.message(F.text.in_(text_values("btn_read_only_off")))
+async def read_only_off(message: Message):
+    if not is_admin(message.from_user.id if message.from_user else None):
+        return
+
+    admin_id = message.from_user.id if message.from_user else None
+    language = get_admin_language(admin_id)
+
+    set_read_only_mode("off", admin_id=admin_id)
+
+    await message.answer(
+        get_admin_text("readonly_disabled", language),
+        reply_markup=read_only_keyboard(language),
+    )
+
+
+@router.message(F.text.in_(text_values("btn_read_only_add_current_chat")))
+async def read_only_add_current_chat(message: Message):
+    if not is_admin(message.from_user.id if message.from_user else None):
+        return
+
+    admin_id = message.from_user.id if message.from_user else None
+    language = get_admin_language(admin_id)
+
+    add_read_only_chat(
+        chat_id=message.chat.id,
+        admin_id=admin_id,
+    )
+
+    await message.answer(
+        f"{get_admin_text('readonly_chat_added', language)}\n"
+        f"Chat ID: {message.chat.id}",
+        reply_markup=read_only_keyboard(language),
+    )
+
+
+@router.message(F.text.in_(text_values("btn_read_only_remove_current_chat")))
+async def read_only_remove_current_chat(message: Message):
+    if not is_admin(message.from_user.id if message.from_user else None):
+        return
+
+    admin_id = message.from_user.id if message.from_user else None
+    language = get_admin_language(admin_id)
+
+    ok = remove_read_only_chat(
+        chat_id=message.chat.id,
+        admin_id=admin_id,
+    )
+
+    if ok:
+        text = get_admin_text("readonly_chat_removed", language)
+    else:
+        text = get_admin_text("readonly_chat_not_found", language)
+
+    await message.answer(
+        f"{text}\nChat ID: {message.chat.id}",
+        reply_markup=read_only_keyboard(language),
+    )
+
+
+@router.message(F.text.in_(text_values("btn_read_only_list_chats")))
+async def read_only_list_chats(message: Message):
+    await send_read_only_menu(message)
+Теперь открой:
+app/admin/admin_router.py
+И добавь импорт:
+from app.admin.handlers.read_only import router as read_only_router
+Потом ниже добавь подключение:
+admin_router.include_router(read_only_router)
+Итоговый admin_router.py должен быть примерно такой:
+from aiogram import Router
+
+from app.admin.handlers.main_menu import router as main_menu_router
+from app.admin.handlers.knowledge_create import router as knowledge_create_router
+from app.admin.handlers.incidents_create import router as incidents_create_router
+from app.admin.handlers.incidents_manage import router as incidents_manage_router
+from app.admin.handlers.review_cases import router as review_cases_router
+from app.admin.handlers.stats import router as stats_router
+from app.admin.handlers.read_only import router as read_only_router
+
+
+admin_router = Router(name="admin_router")
+
+admin_router.include_router(main_menu_router)
+admin_router.include_router(knowledge_create_router)
+admin_router.include_router(incidents_create_router)
+admin_router.include_router(incidents_manage_router)
+admin_router.include_router(review_cases_router)
+admin_router.include_router(stats_router)
+admin_router.include_router(read_only_router)
+
+
+!!!!!!!!!!!!!!!!!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!!!!!!!!!!!!!!!!
+Проверь:
+python -c "from app.admin.handlers.read_only import router; print('read_only handler ok')"
+Если выдаст ошибку про app.admin.keyboards.read_only или app.admin.services.read_only_service, значит у тебя ещё не созданы эти два файла.

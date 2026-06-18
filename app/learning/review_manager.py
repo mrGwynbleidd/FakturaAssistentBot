@@ -49,8 +49,7 @@ def ensure_csv_header(path: Path, fieldnames: list[str]) -> None:
 
     with open(path, mode="r", encoding="utf-8-sig", newline="") as f:
         reader = csv.DictReader(f)
-
-        cur_header = next(reader, [])
+        cur_header = list(reader.fieldnames or [])
 
     if cur_header != fieldnames:
          backup_path = path.with_name(
@@ -83,7 +82,7 @@ def save_approved_case(
          "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
          "language": clean_text(language),
          "question": clean_text(question),
-         "approved_answer": clean_text(question),
+         "approved_answer": clean_text(approved_answer),
          "category": clean_text(category),
          "source_type": clean_text(source_type),
          "source_id": clean_text(source_id),

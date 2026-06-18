@@ -1059,6 +1059,7 @@ admin_router.include_router(review_cases_router)
 admin_router.include_router(stats_router)
 ```
 
+!!!!!!!!!
 А в `app/main.py` будет:
 
 ```python
@@ -1068,6 +1069,7 @@ from app.admin.admin_router import admin_router
 dp.include_router(admin_router)
 dp.include_router(user_router)
 ```
+!!!!!!!!!!!!1
 
 ---
 
@@ -1734,3 +1736,1014 @@ stats.py
 ```
 
 Так проект станет нормальным, расширяемым и готовым к переводу интерфейса.
+
+
+
+
+
+
+
+
+
+
+!!!!!!!!!!
+
+Да, папка `bot/` **нужна**. Её не удаляем.
+
+Сейчас логика такая:
+
+```text
+app/bot/
+= обычный пользовательский Telegram-бот
+
+app/admin/
+= отдельная админ-панель
+```
+
+То есть:
+
+```text
+bot/handlers.py
+```
+
+отвечает за обычных пользователей, вопросы, фото, меню, язык.
+
+А новая папка:
+
+```text
+admin/
+```
+
+будет отвечать только за админов: review cases, добавление Q/A, временные проблемы, статистика, управление админами. В твоём репозитории сейчас уже есть папка `app/bot`, а админка пока находится внутри большого `admin_handlers.py`, поэтому мы аккуратно выносим её в отдельный модуль. ([GitHub][1])
+
+Я разобью коды на **3 части**, чтобы не смешивать всё в один огромный ответ.
+
+---
+
+# Часть 1 из 3
+
+В этой части будут базовые файлы для новой структуры:
+
+```text
+app/admin/
+├── __init__.py
+├── admin_config.py
+│
+├── texts/
+│   ├── __init__.py
+│   ├── ru.py
+│   ├── uz.py
+│   └── en.py
+│
+├── keyboards/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── knowledge.py
+│   ├── incidents.py
+│   └── review.py
+│
+└── states/
+    ├── __init__.py
+    ├── knowledge_states.py
+    ├── incident_states.py
+    └── review_states.py
+```
+
+Пока это **структура, тексты, кнопки и состояния**. Во 2-й части дам `services/`, в 3-й части — `handlers/`, `admin_router.py` и подключение к `main.py`.
+
+---
+
+# 1. Создай папки
+
+В терминале из корня проекта:
+
+```powershell
+mkdir app\admin
+mkdir app\admin\texts
+mkdir app\admin\keyboards
+mkdir app\admin\states
+mkdir app\admin\handlers
+mkdir app\admin\services
+```
+
+---
+
+# 2. `app/admin/__init__.py`
+
+```python
+"""
+Admin panel package.
+
+Здесь будет новая модульная админ-панель:
+- texts: все тексты и кнопки
+- keyboards: клавиатуры
+- states: FSM-состояния
+- services: работа с CSV/логикой
+- handlers: Telegram handlers
+"""
+```
+
+---
+
+# 3. `app/admin/admin_config.py`
+
+```python
+from app.config import ADMIN_IDS
+
+
+def normalize_admin_ids(raw_admin_ids) -> set[int]:
+    """
+    Приводит ADMIN_IDS к set[int].
+
+    Поддерживает варианты:
+    - [123, 456]
+    - "123,456"
+    - ""
+    - None
+    """
+
+    if not raw_admin_ids:
+        return set()
+
+    if isinstance(raw_admin_ids, set):
+        return {int(admin_id) for admin_id in raw_admin_ids}
+
+    if isinstance(raw_admin_ids, list):
+        return {int(admin_id) for admin_id in raw_admin_ids}
+
+    if isinstance(raw_admin_ids, tuple):
+        return {int(admin_id) for admin_id in raw_admin_ids}
+
+    if isinstance(raw_admin_ids, str):
+        result = set()
+
+        for item in raw_admin_ids.split(","):
+            item = item.strip()
+
+            if item.isdigit():
+                result.add(int(item))
+
+        return result
+
+    return set()
+
+
+ADMIN_ID_SET = normalize_admin_ids(ADMIN_IDS)
+
+
+def is_admin_user(user_id: int | None) -> bool:
+    """
+    Проверяет, является ли пользователь админом.
+    """
+
+    if user_id is None:
+        return False
+
+    return int(user_id) in ADMIN_ID_SET
+```
+
+---
+
+# 4. `app/admin/texts/ru.py`
+
+```python
+ADMIN_TEXTS_RU = {
+    # Main menu
+    "admin_menu_title": "Админ-панель",
+    "admin_menu_description": "Выберите действие:",
+    "access_denied": "У вас нет доступа к админ-панели.",
+    "unknown_command": "Неизвестная команда админ-панели.",
+
+    # Main buttons
+    "btn_add_qa": "➕ Добавить Q/A",
+    "btn_add_incident": "🚨 Добавить временную проблему",
+    "btn_active_incidents": "📋 Активные проблемы",
+    "btn_review_cases": "✅ Review cases",
+    "btn_stats": "📊 Статистика",
+    "btn_settings": "⚙️ Настройки",
+    "btn_cancel": "❌ Отмена",
+    "btn_back": "⬅️ Назад",
+    "btn_exit": "⬅️ Выйти",
+
+    # Confirmation buttons
+    "btn_confirm": "✅ Подтвердить",
+    "btn_reject": "❌ Отклонить",
+    "btn_skip": "⏭ Пропустить",
+
+    # Add Q/A
+    "add_qa_start": "Создание нового Q/A.",
+    "enter_question": "Введите вопрос, который может задать пользователь:",
+    "enter_answer": "Введите правильный ответ на этот вопрос:",
+    "enter_category": "Введите категорию. Например: login, documents, soliq, api, general.",
+    "enter_tags": "Введите ключевые слова через запятую. Например: ттн, накладная, документ.",
+    "qa_preview_title": "Проверьте Q/A перед сохранением:",
+    "qa_saved": "Q/A успешно сохранён.",
+    "qa_cancelled": "Создание Q/A отменено.",
+
+    # Incidents
+    "add_incident_start": "Создание временной проблемы.",
+    "enter_incident_title": "Введите название проблемы. Например: Сбой Soliq.",
+    "enter_incident_problem": "Кратко опишите проблему:",
+    "enter_incident_keywords": "Введите ключевые слова через запятую. Например: soliq, ошибка, отправка.",
+    "enter_incident_answer": "Введите ответ, который бот должен показывать пользователям:",
+    "enter_incident_end_time": "Введите дату и время окончания активности. Например: 2026-06-16 18:00. Если срок неизвестен, напишите: none.",
+    "incident_preview_title": "Проверьте временную проблему перед активацией:",
+    "incident_saved": "Временная проблема сохранена и активирована.",
+    "incident_cancelled": "Создание временной проблемы отменено.",
+    "no_active_incidents": "Активных временных проблем нет.",
+    "active_incidents_title": "Активные временные проблемы:",
+    "incident_disabled": "Временная проблема отключена.",
+    "incident_not_found": "Временная проблема не найдена.",
+
+    # Review
+    "review_cases_title": "Кейсы на проверке:",
+    "no_review_cases": "Сейчас нет кейсов на проверке.",
+    "enter_review_answer": "Введите правильный ответ для этого кейса:",
+    "review_case_saved": "Кейс сохранён в approved.csv.",
+    "review_case_rejected": "Кейс отклонён.",
+    "review_case_not_found": "Кейс не найден.",
+
+    # Stats
+    "stats_title": "Статистика бота",
+    "stats_empty": "Пока нет данных для статистики.",
+
+    # Common
+    "saved_successfully": "Сохранено успешно.",
+    "operation_cancelled": "Операция отменена.",
+    "error_occurred": "Произошла ошибка. Проверьте логи.",
+}
+```
+
+---
+
+# 5. `app/admin/texts/uz.py`
+
+Пока можно оставить узбекский текст частично русским, чтобы потом спокойно перевести. Главное — структура уже готова.
+
+```python
+ADMIN_TEXTS_UZ = {
+    # Main menu
+    "admin_menu_title": "Admin panel",
+    "admin_menu_description": "Amalni tanlang:",
+    "access_denied": "Sizda admin panelga kirish huquqi yo‘q.",
+    "unknown_command": "Noma’lum admin buyrug‘i.",
+
+    # Main buttons
+    "btn_add_qa": "➕ Q/A qo‘shish",
+    "btn_add_incident": "🚨 Vaqtinchalik muammo qo‘shish",
+    "btn_active_incidents": "📋 Faol muammolar",
+    "btn_review_cases": "✅ Review cases",
+    "btn_stats": "📊 Statistika",
+    "btn_settings": "⚙️ Sozlamalar",
+    "btn_cancel": "❌ Bekor qilish",
+    "btn_back": "⬅️ Orqaga",
+    "btn_exit": "⬅️ Chiqish",
+
+    # Confirmation buttons
+    "btn_confirm": "✅ Tasdiqlash",
+    "btn_reject": "❌ Rad etish",
+    "btn_skip": "⏭ O‘tkazib yuborish",
+
+    # Add Q/A
+    "add_qa_start": "Yangi Q/A yaratish.",
+    "enter_question": "Foydalanuvchi berishi mumkin bo‘lgan savolni kiriting:",
+    "enter_answer": "Ushbu savolga to‘g‘ri javobni kiriting:",
+    "enter_category": "Kategoriyani kiriting. Masalan: login, documents, soliq, api, general.",
+    "enter_tags": "Kalit so‘zlarni vergul orqali kiriting. Masalan: ttn, hujjat, soliq.",
+    "qa_preview_title": "Saqlashdan oldin Q/A ni tekshiring:",
+    "qa_saved": "Q/A muvaffaqiyatli saqlandi.",
+    "qa_cancelled": "Q/A yaratish bekor qilindi.",
+
+    # Incidents
+    "add_incident_start": "Vaqtinchalik muammo yaratish.",
+    "enter_incident_title": "Muammo nomini kiriting. Masalan: Soliq tizimida nosozlik.",
+    "enter_incident_problem": "Muammoni qisqacha tasvirlab bering:",
+    "enter_incident_keywords": "Kalit so‘zlarni vergul orqali kiriting. Masalan: soliq, xatolik, yuborish.",
+    "enter_incident_answer": "Bot foydalanuvchilarga ko‘rsatishi kerak bo‘lgan javobni kiriting:",
+    "enter_incident_end_time": "Faollik tugash vaqtini kiriting. Masalan: 2026-06-16 18:00. Agar noma’lum bo‘lsa: none.",
+    "incident_preview_title": "Faollashtirishdan oldin vaqtinchalik muammoni tekshiring:",
+    "incident_saved": "Vaqtinchalik muammo saqlandi va faollashtirildi.",
+    "incident_cancelled": "Vaqtinchalik muammo yaratish bekor qilindi.",
+    "no_active_incidents": "Faol vaqtinchalik muammolar yo‘q.",
+    "active_incidents_title": "Faol vaqtinchalik muammolar:",
+    "incident_disabled": "Vaqtinchalik muammo o‘chirildi.",
+    "incident_not_found": "Vaqtinchalik muammo topilmadi.",
+
+    # Review
+    "review_cases_title": "Tekshiruvdagi keyslar:",
+    "no_review_cases": "Hozircha tekshiruvdagi keyslar yo‘q.",
+    "enter_review_answer": "Ushbu keys uchun to‘g‘ri javobni kiriting:",
+    "review_case_saved": "Keys approved.csv fayliga saqlandi.",
+    "review_case_rejected": "Keys rad etildi.",
+    "review_case_not_found": "Keys topilmadi.",
+
+    # Stats
+    "stats_title": "Bot statistikasi",
+    "stats_empty": "Hozircha statistika uchun ma’lumot yo‘q.",
+
+    # Common
+    "saved_successfully": "Muvaffaqiyatli saqlandi.",
+    "operation_cancelled": "Amal bekor qilindi.",
+    "error_occurred": "Xatolik yuz berdi. Loglarni tekshiring.",
+}
+```
+
+---
+
+# 6. `app/admin/texts/en.py`
+
+```python
+ADMIN_TEXTS_EN = {
+    # Main menu
+    "admin_menu_title": "Admin panel",
+    "admin_menu_description": "Choose an action:",
+    "access_denied": "You do not have access to the admin panel.",
+    "unknown_command": "Unknown admin command.",
+
+    # Main buttons
+    "btn_add_qa": "➕ Add Q/A",
+    "btn_add_incident": "🚨 Add temporary issue",
+    "btn_active_incidents": "📋 Active issues",
+    "btn_review_cases": "✅ Review cases",
+    "btn_stats": "📊 Statistics",
+    "btn_settings": "⚙️ Settings",
+    "btn_cancel": "❌ Cancel",
+    "btn_back": "⬅️ Back",
+    "btn_exit": "⬅️ Exit",
+
+    # Confirmation buttons
+    "btn_confirm": "✅ Confirm",
+    "btn_reject": "❌ Reject",
+    "btn_skip": "⏭ Skip",
+
+    # Add Q/A
+    "add_qa_start": "Creating a new Q/A.",
+    "enter_question": "Enter the question a user may ask:",
+    "enter_answer": "Enter the correct answer for this question:",
+    "enter_category": "Enter a category. Example: login, documents, soliq, api, general.",
+    "enter_tags": "Enter keywords separated by commas. Example: ttn, invoice, document.",
+    "qa_preview_title": "Review the Q/A before saving:",
+    "qa_saved": "Q/A saved successfully.",
+    "qa_cancelled": "Q/A creation cancelled.",
+
+    # Incidents
+    "add_incident_start": "Creating a temporary issue.",
+    "enter_incident_title": "Enter the issue title. Example: Soliq outage.",
+    "enter_incident_problem": "Briefly describe the issue:",
+    "enter_incident_keywords": "Enter keywords separated by commas. Example: soliq, error, sending.",
+    "enter_incident_answer": "Enter the answer the bot should show to users:",
+    "enter_incident_end_time": "Enter the end time. Example: 2026-06-16 18:00. If unknown, write: none.",
+    "incident_preview_title": "Review the temporary issue before activation:",
+    "incident_saved": "Temporary issue saved and activated.",
+    "incident_cancelled": "Temporary issue creation cancelled.",
+    "no_active_incidents": "There are no active temporary issues.",
+    "active_incidents_title": "Active temporary issues:",
+    "incident_disabled": "Temporary issue disabled.",
+    "incident_not_found": "Temporary issue not found.",
+
+    # Review
+    "review_cases_title": "Cases pending review:",
+    "no_review_cases": "There are no cases pending review.",
+    "enter_review_answer": "Enter the correct answer for this case:",
+    "review_case_saved": "Case saved to approved.csv.",
+    "review_case_rejected": "Case rejected.",
+    "review_case_not_found": "Case not found.",
+
+    # Stats
+    "stats_title": "Bot statistics",
+    "stats_empty": "No statistics data yet.",
+
+    # Common
+    "saved_successfully": "Saved successfully.",
+    "operation_cancelled": "Operation cancelled.",
+    "error_occurred": "An error occurred. Check the logs.",
+}
+```
+
+---
+
+# 7. `app/admin/texts/__init__.py`
+
+```python
+from app.admin.texts.ru import ADMIN_TEXTS_RU
+from app.admin.texts.uz import ADMIN_TEXTS_UZ
+from app.admin.texts.en import ADMIN_TEXTS_EN
+
+
+ADMIN_TEXTS = {
+    "ru": ADMIN_TEXTS_RU,
+    "uz": ADMIN_TEXTS_UZ,
+    "en": ADMIN_TEXTS_EN,
+}
+
+
+def get_admin_text(key: str, language: str = "ru") -> str:
+    """
+    Возвращает текст админ-панели по ключу.
+
+    Если язык или ключ не найден, возвращает русский текст.
+    Если ключа нет даже в русском, возвращает сам ключ.
+    """
+
+    language_texts = ADMIN_TEXTS.get(language, ADMIN_TEXTS_RU)
+
+    return language_texts.get(
+        key,
+        ADMIN_TEXTS_RU.get(key, key),
+    )
+```
+
+---
+
+# 8. `app/admin/keyboards/__init__.py`
+
+```python
+"""
+Admin keyboards package.
+"""
+```
+
+---
+
+# 9. `app/admin/keyboards/main.py`
+
+```python
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+
+from app.admin.texts import get_admin_text
+
+
+def admin_main_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
+    """
+    Главное меню админ-панели.
+    """
+
+    keyboard = [
+        [
+            KeyboardButton(text=get_admin_text("btn_add_qa", language)),
+            KeyboardButton(text=get_admin_text("btn_add_incident", language)),
+        ],
+        [
+            KeyboardButton(text=get_admin_text("btn_active_incidents", language)),
+            KeyboardButton(text=get_admin_text("btn_review_cases", language)),
+        ],
+        [
+            KeyboardButton(text=get_admin_text("btn_stats", language)),
+            KeyboardButton(text=get_admin_text("btn_settings", language)),
+        ],
+        [
+            KeyboardButton(text=get_admin_text("btn_exit", language)),
+        ],
+    ]
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+    )
+
+
+def admin_cancel_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
+    """
+    Клавиатура отмены операции.
+    """
+
+    keyboard = [
+        [
+            KeyboardButton(text=get_admin_text("btn_cancel", language)),
+        ]
+    ]
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+    )
+
+
+def admin_confirm_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
+    """
+    Клавиатура подтверждения.
+    """
+
+    keyboard = [
+        [
+            KeyboardButton(text=get_admin_text("btn_confirm", language)),
+            KeyboardButton(text=get_admin_text("btn_cancel", language)),
+        ]
+    ]
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+    )
+```
+
+---
+
+# 10. `app/admin/keyboards/knowledge.py`
+
+```python
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+
+from app.admin.texts import get_admin_text
+
+
+def knowledge_category_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
+    """
+    Категории для ручного Q/A.
+    """
+
+    keyboard = [
+        [
+            KeyboardButton(text="login"),
+            KeyboardButton(text="documents"),
+        ],
+        [
+            KeyboardButton(text="soliq"),
+            KeyboardButton(text="api"),
+        ],
+        [
+            KeyboardButton(text="general"),
+            KeyboardButton(text=get_admin_text("btn_cancel", language)),
+        ],
+    ]
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+    )
+
+
+def knowledge_after_save_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
+    """
+    Клавиатура после сохранения Q/A.
+    """
+
+    keyboard = [
+        [
+            KeyboardButton(text=get_admin_text("btn_add_qa", language)),
+            KeyboardButton(text=get_admin_text("btn_back", language)),
+        ]
+    ]
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+    )
+```
+
+---
+
+# 11. `app/admin/keyboards/incidents.py`
+
+```python
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+
+from app.admin.texts import get_admin_text
+
+
+def incident_match_mode_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
+    """
+    Режим совпадения временной проблемы.
+
+    contains:
+    если вопрос содержит одно из ключевых слов.
+
+    all_keywords:
+    если вопрос содержит все ключевые слова.
+    """
+
+    keyboard = [
+        [
+            KeyboardButton(text="contains"),
+            KeyboardButton(text="all_keywords"),
+        ],
+        [
+            KeyboardButton(text=get_admin_text("btn_cancel", language)),
+        ],
+    ]
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+    )
+
+
+def incident_manage_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
+    """
+    Управление временными проблемами.
+    """
+
+    keyboard = [
+        [
+            KeyboardButton(text=get_admin_text("btn_active_incidents", language)),
+            KeyboardButton(text=get_admin_text("btn_add_incident", language)),
+        ],
+        [
+            KeyboardButton(text=get_admin_text("btn_back", language)),
+        ],
+    ]
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+    )
+
+
+def incident_after_save_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
+    """
+    Клавиатура после сохранения временной проблемы.
+    """
+
+    keyboard = [
+        [
+            KeyboardButton(text=get_admin_text("btn_add_incident", language)),
+            KeyboardButton(text=get_admin_text("btn_active_incidents", language)),
+        ],
+        [
+            KeyboardButton(text=get_admin_text("btn_back", language)),
+        ],
+    ]
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+    )
+```
+
+---
+
+# 12. `app/admin/keyboards/review.py`
+
+```python
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+
+from app.admin.texts import get_admin_text
+
+
+def review_action_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
+    """
+    Клавиатура для review case.
+    """
+
+    keyboard = [
+        [
+            KeyboardButton(text=get_admin_text("btn_confirm", language)),
+            KeyboardButton(text=get_admin_text("btn_reject", language)),
+        ],
+        [
+            KeyboardButton(text=get_admin_text("btn_skip", language)),
+            KeyboardButton(text=get_admin_text("btn_cancel", language)),
+        ],
+    ]
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+    )
+
+
+def review_after_action_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
+    """
+    Клавиатура после review-действия.
+    """
+
+    keyboard = [
+        [
+            KeyboardButton(text=get_admin_text("btn_review_cases", language)),
+            KeyboardButton(text=get_admin_text("btn_back", language)),
+        ]
+    ]
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+    )
+```
+
+---
+
+# 13. `app/admin/states/__init__.py`
+
+```python
+"""
+Admin FSM states package.
+"""
+```
+
+---
+
+# 14. `app/admin/states/knowledge_states.py`
+
+```python
+from aiogram.fsm.state import StatesGroup, State
+
+
+class AddKnowledgeStates(StatesGroup):
+    """
+    FSM для создания постоянного Q/A.
+    """
+
+    waiting_for_question = State()
+    waiting_for_answer = State()
+    waiting_for_category = State()
+    waiting_for_tags = State()
+    waiting_for_confirmation = State()
+```
+
+---
+
+# 15. `app/admin/states/incident_states.py`
+
+```python
+from aiogram.fsm.state import StatesGroup, State
+
+
+class AddIncidentStates(StatesGroup):
+    """
+    FSM для создания временной проблемы.
+
+    Пример:
+    - сбой Soliq
+    - техосмотр Faktura
+    - временная проблема с Google
+    - проблема с отправкой документов
+    """
+
+    waiting_for_title = State()
+    waiting_for_problem_text = State()
+    waiting_for_keywords = State()
+    waiting_for_answer = State()
+    waiting_for_end_time = State()
+    waiting_for_match_mode = State()
+    waiting_for_confirmation = State()
+```
+
+---
+
+# 16. `app/admin/states/review_states.py`
+
+```python
+from aiogram.fsm.state import StatesGroup, State
+
+
+class ReviewCaseStates(StatesGroup):
+    """
+    FSM для проверки плохих ответов бота.
+    """
+
+    waiting_for_case_id = State()
+    waiting_for_admin_answer = State()
+    waiting_for_confirmation = State()
+```
+
+---
+
+# Важно после этой части
+
+Пока **не подключай `app/admin/admin_router.py` в `main.py`**, потому что handlers мы ещё не создали.
+
+Сейчас ты можешь просто создать эти файлы и сохранить. Они не должны ломать проект.
+
+---
+
+# Что будет в части 2
+
+В следующей части дам полные коды для:
+
+```text
+app/admin/services/
+├── __init__.py
+├── admin_access.py
+├── knowledge_service.py
+├── incident_service.py
+├── review_service.py
+└── stats_service.py
+```
+
+Там будет логика сохранения:
+
+```text
+data/admin/admin_knowledge.csv
+data/admin/incidents.csv
+data/admin/admin_actions_log.csv
+```
+
+И функции:
+
+```text
+save_admin_knowledge()
+save_incident()
+list_active_incidents()
+find_matching_incident()
+disable_incident()
+get_review_cases()
+get_bot_stats()
+```
+
+[1]: https://github.com/mrGwynbleidd/FakturaAssistentBot/tree/main/app "FakturaAssistentBot/app at main · mrGwynbleidd/FakturaAssistentBot · GitHub"
+
+
+
+Ошибка именно из-за ADMIN_IDS.
+У тебя где-то сейчас логика такая:
+return user_id in ADMIN_IDS
+А user_id — это int, например:
+123456789
+а ADMIN_IDS — строка из .env, например:
+"123456789,987654321"
+Поэтому Python ругается:
+TypeError: 'in <string>' requires string as left operand, not int
+Нужно заменить файл app/admin/admin_config.py полностью.
+
+
+⸻
+
+
+Исправь 
+app/admin/admin_config.py
+Вставь туда вот этот код:
+import os
+from typing import Any
+
+
+def get_raw_admin_ids() -> Any:
+    """
+    Берёт ADMIN_IDS из app.config или из .env.
+
+    Поддерживает варианты:
+    ADMIN_IDS=123456789
+    ADMIN_IDS=123456789,987654321
+    ADMIN_IDS="123456789,987654321"
+    ADMIN_IDS=[123456789, 987654321]
+    """
+
+    try:
+        from app.config import ADMIN_IDS
+
+        if ADMIN_IDS:
+            return ADMIN_IDS
+
+    except ImportError:
+        pass
+
+    return os.getenv("ADMIN_IDS", "")
+
+
+def parse_admin_ids(raw_admin_ids: Any) -> set[int]:
+    """
+    Превращает ADMIN_IDS в set[int].
+    """
+
+    if raw_admin_ids is None:
+        return set()
+
+    if isinstance(raw_admin_ids, int):
+        return {raw_admin_ids}
+
+    if isinstance(raw_admin_ids, list | tuple | set):
+        result = set()
+
+        for item in raw_admin_ids:
+            try:
+                result.add(int(str(item).strip()))
+            except ValueError:
+                continue
+
+        return result
+
+    raw_text = str(raw_admin_ids).strip()
+
+    if not raw_text:
+        return set()
+
+    raw_text = raw_text.replace("[", "")
+    raw_text = raw_text.replace("]", "")
+    raw_text = raw_text.replace('"', "")
+    raw_text = raw_text.replace("'", "")
+
+    parts = raw_text.split(",")
+
+    result = set()
+
+    for part in parts:
+        part = part.strip()
+
+        if not part:
+            continue
+
+        try:
+            result.add(int(part))
+        except ValueError:
+            continue
+
+    return result
+
+
+def get_admin_ids() -> set[int]:
+    raw_admin_ids = get_raw_admin_ids()
+    return parse_admin_ids(raw_admin_ids)
+
+
+
+def is_admin_user(user_id: int | str | None) -> bool:
+    """
+    Проверяет, является ли пользователь админом.
+    """
+
+    if user_id is None:
+        return False
+
+    try:
+        user_id_int = int(user_id)
+    except ValueError:
+        return False
+
+    return user_id_int in get_admin_ids()
+
+
+⸻
+
+
+Проверь 
+.env
+В .env должно быть так:
+ADMIN_IDS=123456789
+или если несколько админов:
+ADMIN_IDS=123456789,987654321
+Без квадратных скобок лучше.
+
+
+⸻
+
+
+Проверь 
+app/config.py
+Если у тебя там есть ADMIN_IDS, пусть будет так:
+import os
+
+ADMIN_IDS = os.getenv("ADMIN_IDS", "")
+Не надо делать так:
+ADMIN_IDS = int(os.getenv("ADMIN_IDS"))
+и не надо так:
+ADMIN_IDS = os.getenv("ADMIN_IDS").split(",")
+Пусть admin_config.py сам нормально парсит.
+
+
+⸻
+
+
+Быстрая проверка
+В терминале из корня проекта:
+python -c "from app.admin.admin_config import get_admin_ids; print(get_admin_ids())"
+Должно вывести примерно:
+{123456789}
+Потом проверь:
+python -c "from app.admin.admin_config import is_admin_user; print(is_admin_user(123456789))"
+Должно быть:
+True
+После этого перезапусти бота:
+python -m app.main
+Теперь /admin не должен падать.
+
+
+
+
+
+
+
+7. Быстрая проверка в терминале
+python -c "from app.
+admin.texts import get_admin_text; print(get_admin_text('btn_add_qa'))"
+Должно вывести:
+➕ Добавить Q/A
+Потом:
+python -c "from app.admin.texts import get_admin_text; print(get_admin_text('btn_active_incidents'))"
+Должно вывести:
+📌 Активные проблемы
+Потом:
+python -c "from app.admin.texts import get_admin_text; print(get_admin_text('btn_stats'))"
+Должно вывести:
+📊 Статистика
+
+
+⸻
+
+
+8. Перезапусти бота
+python -m app.main
+После этого /admin должен показать нормальные кнопки:
+➕ Добавить Q/A
+🚨 Добавить временную проблему
+📌 Активные проблемы
+🧠 Review cases
+🔐 Read-only режим
+📊 Статистика
+⚙️ Настройки
+🚪 Выйти
+И кнопки Добавить Q/A, Активные проблемы, Статистика должны начать работать.
+
+
+!!!!!!!!!!!!!!!!!!!!11
+
+
+
