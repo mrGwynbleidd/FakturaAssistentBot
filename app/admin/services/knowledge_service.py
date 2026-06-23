@@ -137,7 +137,7 @@ def update_admin_knowledge_status(
 
     for row in rows:
         if row.get("knowledge_id") == knowledge_id:
-            row["status"] == status
+            row["status"] = status
             updated = True
             break
 

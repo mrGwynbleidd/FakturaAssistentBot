@@ -93,7 +93,7 @@ async def incident_problem_text(message: Message, state: FSMContext):
     problem_text = (message.text or "").strip()
 
     if not problem_text:
-        await message.answer(get_admin_text("enter_inciddent_problem", language))
+        await message.answer(get_admin_text("enter_incident_problem", language))
         return
     
     await state.update_data(problem_text=problem_text)
@@ -123,7 +123,7 @@ async def incident_keywords(message: Message, state: FSMContext):
     keywords = (message.text or "").strip()
 
     if not keywords:
-        await message.answer(get_admin_text("enter_inlacident_keywords", language))
+        await message.answer(get_admin_text("enter_incident_keywords", language))
         return
     
     await state.update_data(keywords=keywords)
@@ -187,7 +187,7 @@ async def incident_end_time(message: Message, state: FSMContext):
     if end_time.lower() in {"none", "no", "-", "", "нет"}:
         end_time = ""
 
-    await state.update_data(end_time=end_time)
+    await state.update_data(end_at=end_time)
     await state.set_state(AddIncidentStates.waiting_for_match_mode)
 
     await message.answer(

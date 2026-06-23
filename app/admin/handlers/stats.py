@@ -1,6 +1,7 @@
 
 from aiogram import Router, F
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from app.admin.services.admin_access import is_admin, get_admin_language
@@ -36,10 +37,13 @@ def text_values(key: str) -> list[str]:
     
 
 @router.message(Command("admin_stats"))
-async def admin_stats(message: Message):
+@router.message(F.text.in_(text_values("btn_stats")))
+async def admin_stats(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id if message.from_user else None):
         return
-    
+
+    await state.clear()  # сбрасываем FSM-состояние если было активным
+
     language = get_admin_language(message.from_user.id if message.from_user else None)
 
     await message.answer(

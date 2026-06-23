@@ -16,12 +16,16 @@ from app.admin.handlers.read_only import router as read_only_router
 
 admin_router = Router(name="admin_router")
 
+# ВАЖНО: stats и review_cases должны быть ПЕРВЫМИ (до FSM-роутеров).
+# FSM-хэндлеры (approve_case_answer, waiting_for_answer и т.д.) перехватывают
+# ЛЮБОЙ текст в своём состоянии — если stats/review_cases зарегистрированы после,
+# нажатие кнопки в активном FSM-состоянии никогда не дойдёт до нужного хэндлера.
 admin_router.include_router(main_menu_router)
+admin_router.include_router(stats_router)          # до FSM-роутеров
+admin_router.include_router(review_cases_router)   # view-хэндлер до FSM-хэндлеров
 admin_router.include_router(knowledge_create_router)
 admin_router.include_router(incidents_create_router)
 admin_router.include_router(incidents_manage_router)
-admin_router.include_router(review_cases_router)
-admin_router.include_router(stats_router)
 admin_router.include_router(read_only_router)
 
 

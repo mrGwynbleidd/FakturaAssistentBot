@@ -115,56 +115,42 @@ def save_to_approved_cases(
         language: str = "ru",
         category: str = "review",
         source_type: str = "admin_review",
-        source_id: str ="",
+        source_id: str = "",
         notes: str = "",
-)-> None:
-    try:
-        from app.learning.review_manager import save_approved_case
+) -> None:
+    from app.learning.review_manager import save_approved_case
+
+    save_approved_case(
+        case_id=case_id,
+        question=question,
+        approved_answer=approved_answer,
+        language=language,
+        category=category,
+        source_type=source_type,
+        source_id=source_id or case_id,
+        status="approved",
+        notes=notes,
+    )
+
     
-        try:
-            save_to_approved_cases(
-                case_id=case_id,
-                question=question,
-                approved_answer=approved_answer,
-                language=language,
-                category=category,
-                source_type=source_type,
-                source_id=source_id or case_id,
-                status="approved",
-                notes=notes,
-            )
-            return
-        except TypeError:
-            save_to_approved_cases(
-                case_id=case_id,
-                question=question,
-                approved_answer=approved_answer,
-                language=language,
-                category=category,
-                source_type=source_type,
-            )
-            return
-    except ImportError:
-        pass
-
     try:
-        from app.learning.review_manager import approve_case_manually
-
-        approve_case_manually(
-            case_id=case_id,
-            question=question,
-            approved_answer=approved_answer,
-            language=language,
-            category=category,
+        from app.rag.approved_index_updater import add_approved_case_to_index
+        add_approved_case_to_index(
+        case_id=case_id,
+        question=question,
+        answer=approved_answer,
+        language=language,
+        category=category,
+        source_type="admin_review",
+        source_id=case_id,
         )
-        return
-
-    except ImportError as err:
-        raise RuntimeError(
-            "Not founded save_approved_case or approve_case_manually"
-            "in app.learning.review_manager"
-        ) from err
+    except Exception as err:
+        print("Approved case saved to CSV, but index update failed:", err)
     
+
+#########
+
+
 
 def approve_review_case(
         case_id: str,

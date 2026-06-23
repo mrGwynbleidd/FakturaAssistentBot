@@ -208,7 +208,7 @@ def split_keywords(keywords: str) -> list[str]:
         return []
     
     return [
-        keywords.strip().lower()
+        keyword.strip().lower()
         for keyword in keywords.split(",")
         if keyword.strip()
     ]
