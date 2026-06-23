@@ -137,6 +137,23 @@ def process_user_question(question: str, save_to_csv: bool = True, save_review_c
     is_api_request = False
     api_intent = None
 
+    from app.rag.priority_retriever import retrieve_priority_context
+
+    rag_result = retrieve_priority_context(question=question, language=language)
+
+    if rag_result.get("mode") in {"direct_approved", "direct_admin_knowledge"}:
+        return {
+            "answer": rag_result.get("answer", ""),
+            "sources": rag_result.get("sources", []),
+            "sent_to_review": False,
+            "review_case_id": None,
+            "review_reason": None,
+        }
+
+    # Берём context и sources из priority_retriever (approved + admin + pdf)
+    context = rag_result.get("context_text", "")
+    sources = rag_result.get("sources", [])
+
     try:
         if should_use_faktura_api(question):
             api_intent = detect_api_intent(question)
@@ -144,12 +161,7 @@ def process_user_question(question: str, save_to_csv: bool = True, save_review_c
                 is_api_request = True
                 log.info(f"🔌 API-запрос: {api_intent}")
                 context, sources = get_api_context(question, api_intent)
-            else:
-                log.info("📚 Поиск в базе знаний...")
-                context, sources = retrieve_context(question, n_results=5)
-        else:
-            log.info("📚 Поиск в базе знаний...")
-            context, sources = retrieve_context(question, n_results=5)
+            # если api_intent не определён — используем уже полученный context из RAG
 
     except Exception as error:
         error_answer = f"Error in searching context in base of knowledge: {error}"
