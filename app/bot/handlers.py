@@ -192,6 +192,20 @@ async def support_handler(msg: Message):
         reply_markup=main_menu_keyboard(language),
     )
 
+
+# #sync
+# @router.message(F.text.in_["♻️ Синхронизация Документа", 
+#                 "♻️ Sync Doc",])
+# async def sync_button_handler(message: Message):
+
+#     language = get_user_language(message.from_user.id)
+
+#     await message.answer(
+#         get_text("support", language),
+#         reply_markup=main_menu_keyboard(language),
+#     )
+
+
 # Restart Button
 @router.message(
     F.text.in_(
@@ -239,15 +253,6 @@ async def set_en_language(message: Message):
         get_text("language_set_en", "en"),
         reply_markup=main_menu_keyboard("en"),
     )
-
-
-
-@router.message(F.photo)
-async def photo_handler(message: Message):
-    # Group photos are now handled by group_handlers.group_router
-    # (registered before this router in main.py, so group messages never reach here)
-    return
-
 
 
 
@@ -367,10 +372,8 @@ from app.core.bot_engine import process_user_image
 
 @router.message(F.photo)
 async def photo_handler(msg: Message):
-
-    ########
-    if COLLECT_GROUP_PHOTOS_ONLY:
-        return
+    # Групповые фото обрабатывает group_router (зарегистрирован раньше в main.py)
+    # Сюда доходят только фото из личных чатов
 
     user_id = msg.from_user.id
     language = get_user_language(user_id)

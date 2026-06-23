@@ -18,6 +18,8 @@ def main_menu_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
                 KeyboardButton(text="🆘 Yordam"),
             ],
             [
+                
+                KeyboardButton(text="♻️ Sync Doc"),
                 KeyboardButton(text="🔄 Qayta boshlash"),
             ],
         ]
@@ -35,6 +37,7 @@ def main_menu_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
                 KeyboardButton(text="🆘 Support"),
             ],
             [
+                KeyboardButton(text="♻️ Sync Doc"),
                 KeyboardButton(text="🔄 Restart"),
             ],
         ]
@@ -52,6 +55,7 @@ def main_menu_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
                 KeyboardButton(text="🆘 Поддержка"),
             ],
             [
+                KeyboardButton(text="♻️ Синхронизация Документа"),
                 KeyboardButton(text="🔄 Перезапустить"),
             ],
         ]
