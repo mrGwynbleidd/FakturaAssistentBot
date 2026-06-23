@@ -107,3 +107,9 @@ def get_document_details(inn: str, doc_uid: str) -> dict:
     GET /Api/Document/GetDetails/{uid}?companyInn={inn}
     """
     return api_get(f"/Api/Document/GetDetails/{doc_uid}", params={"companyInn": inn})
+
+
+
+def get_sync(inn: str, doc_uid: str, modelType: str, contractorType: str) -> dict:
+
+    return api_get(f"/Api/Patch/SyncRoamingDocument/{doc_uid}?inn={inn}&contractorType={contractorType}&modelType={modelType}")

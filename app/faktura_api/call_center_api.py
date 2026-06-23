@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 from app.config import EMAIL, API_PARAM, CALL_CENTER_DOMAIN
 
 from app.learning.review_manager import clean_text
+from app.faktura_api.call_center_cleaner import clean_question, clean_answer, is_quality_pair
 
 #base dir
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -130,11 +131,13 @@ def build_qa(ticket: dict) -> dict | None:
         else:
             answers.append(text)
 
-    question = clean_text(f"{ticket.get('title', '')} {' '.join(questions)}")
+    raw_question = clean_text(f"{ticket.get('title', '')} {' '.join(questions)}")
+    raw_answer = clean_text(" ".join(answers))
 
-    answer = clean_text(" ".join(answers))
+    question = clean_question(raw_question)
+    answer = clean_answer(raw_answer)
 
-    if not question or not answer:
+    if not is_quality_pair(question, answer):
         return None
     
     return{
