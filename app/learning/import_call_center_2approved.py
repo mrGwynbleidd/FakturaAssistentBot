@@ -6,6 +6,7 @@ from pathlib import Path
 
 #import functions
 from app.learning.review_manager import save_approved_case
+from app.faktura_api.call_center_cleaner import clean_question, clean_answer, is_quality_pair
 
 #base dir
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -31,17 +32,21 @@ def import_callcenter_approved(
         reader = csv.DictReader(file)
 
         for row in reader:
-            question = row.get("question", "").strip()
-            answer = row.get("admin_answer", "").strip()
+            raw_question = row.get("question", "").strip()
+            raw_answer = row.get("admin_answer", "").strip()
             ticket_id = row.get("case_id", "").strip()
             case_id = row.get("case_id", f"callcenter_{ticket_id}").strip()
 
-            if len(question) < min_question_len or len(answer) < min_answer_len:
-                skipped +=1
+            # очищаем от мусора Telegram-бота поддержки
+            question = clean_question(raw_question)
+            answer = clean_answer(raw_answer)
+
+            if not is_quality_pair(question, answer, min_q=min_question_len, min_a=min_answer_len):
+                skipped += 1
                 continue
 
             if not auto_approve:
-                skipped +=1
+                skipped += 1
                 continue
 
             save_approved_case(
@@ -59,8 +64,8 @@ def import_callcenter_approved(
             imported +=1
 
     print(f"Imported: {imported}")
-    print(f"Skipped: {skipped}")
+    print(f"Skipped (короткие/пустые): {skipped}")
 
 if __name__ == "__main__":
-    import_callcenter_approved(auto_approve=False)
+    import_callcenter_approved(auto_approve=True)
 
