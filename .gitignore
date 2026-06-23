@@ -16,6 +16,8 @@ models/
 
 test/
 
+data/admin/read_only_settings.txt
+
 backup_data/
 
 # user data — не хранить в git
