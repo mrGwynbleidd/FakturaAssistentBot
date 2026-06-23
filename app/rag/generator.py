@@ -32,6 +32,14 @@ def generate_answer(question: str, context: str, language: str = "ru") -> str:
 • ЗАПРЕЩЕНО использовать **двойные звёздочки** — они не рендерятся в Telegram
 • ЗАПРЕЩЕНО использовать __двойное подчёркивание__
 
+Правила источников:
+1. Если есть source_type=approved, это главный verified источник.
+2. Если есть source_type=admin_knowledge, он важнее PDF.
+3. PDF используй только если approved/admin_knowledge не содержит ответа.
+4. Не противоречь approved answer.
+5. Если approved answer полностью отвечает, не добавляй лишнее из PDF.
+
+
 ВАЖНЫЕ ПРАВИЛА:
 1. Отвечай только на основе CONTEXT.
 2. Если в CONTEXT нет точной инструкции, НЕ говори просто "информации нет".

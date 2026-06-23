@@ -1,3 +1,5 @@
+#
+
 from google import genai
 from app.config import GEMINI_API_KEY
 import time
@@ -12,14 +14,13 @@ GEMINI_MODELS = [
 ]
 
 
-# БАГ 5 БЫЛ: весь код после direct_answer был вне функции из-за сломанных отступов
+# first try answer w/o gemini
 def generate_api_answer(
     question: str,
     api_context: str,
     language: str = "ru",
 ) -> str:
 
-    # Сначала пробуем без Gemini
     direct_answer = format_api_answer_direct(
         question=question,
         api_context=api_context,
