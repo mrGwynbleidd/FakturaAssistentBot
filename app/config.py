@@ -1,8 +1,9 @@
+#read api keys, passwords, username, email and etc from .env
+
 import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Явно указываем путь к .env — всегда найдёт независимо откуда запускаешь
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -25,7 +26,7 @@ CALL_CENTER_DOMAIN = os.getenv("CALL_CENTER_DOMAIN")
 
 ADMIN_IDS=os.getenv("ADMIN_IDS", "")
 
-
+#check is ver empty
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY not found in .env")
 
