@@ -1,13 +1,16 @@
-# Cleaner for call-center ticket data (removes Telegram support bot garbage).
+#cleans raw call center ticket text by removing telegram support bot noise, pii, and template messages
+#used in call_center_api.build_qa and import_call_center_2approved.import_callcenter_approved
 
 import re
 
+#normalizes apostrophe variants to a standard single quote
 _APOSTROPHE_RE = re.compile(r"['''ʼʼ`]")
 
 def _norm(text: str) -> str:
     return _APOSTROPHE_RE.sub("'", text)
 
 
+#noise phrases that appear in ticket titles and user messages from the support telegram bot
 _QUESTION_NOISE_ORIG: list[str] = [
     "Личное сообщение Telegram",
     "Operator",
@@ -32,6 +35,7 @@ _QUESTION_NOISE_ORIG: list[str] = [
     "Murojat turini tanlang",
 ]
 
+#boilerplate phrases from the support bot that appear in agent answer messages
 _ANSWER_TEMPLATES_ORIG: list[str] = [
     "Выберите язык! Tilni tanlang!",
     "Tilni tanlang!",
@@ -75,6 +79,7 @@ _ANSWER_TEMPLATES_ORIG: list[str] = [
     "Описание слишком короткое",
 ]
 
+#additional boilerplate templates for answers
 _ANSWER_EXTRA_TEMPLATES: list[str] = [
     "Tavsif juda qisqa. Iltimos, muammoni batafsilroq tasvirlab bering",
     "Tavsif juda qisqa",
@@ -97,6 +102,7 @@ _ANSWER_EXTRA_TEMPLATES: list[str] = [
     "Здравствуйте",
 ]
 
+#regex patterns for removing personal/technical identifiers from text
 _INN_PATTERN = re.compile(r'\b\d{9}\b')
 _HASH_PATTERN = re.compile(r'\b[a-f0-9]{24,}\b')
 _IP_PATTERN = re.compile(r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b')
@@ -112,6 +118,8 @@ _EMOJI_PATTERN = re.compile(
 _LEADING_GARBAGE = re.compile(r'^[\s\d\.:\-,;•?!\(\)]+')
 
 
+#removes all given phrases from text after normalizing apostrophes
+#used in clean_question and clean_answer
 def _remove_all(text: str, phrases: list[str]) -> str:
     text_n = _norm(text)
     for phrase in phrases:
@@ -120,6 +128,9 @@ def _remove_all(text: str, phrases: list[str]) -> str:
     return text_n
 
 
+#removes noise phrases, pii (inn, phone, ip, hash, url, emoji), and leading garbage from question text
+#returns cleaned question string
+#used in call_center_api.build_qa and import_call_center_2approved
 def clean_question(raw: str) -> str:
     text = raw or ""
     text = _remove_all(text, _QUESTION_NOISE_ORIG)
@@ -135,6 +146,9 @@ def clean_question(raw: str) -> str:
     return text
 
 
+#removes bot template phrases, ticket ids, urls, and leading garbage from answer text
+#returns cleaned answer string
+#used in call_center_api.build_qa and import_call_center_2approved
 def clean_answer(raw: str) -> str:
     text = raw or ""
     text = _remove_all(text, _ANSWER_TEMPLATES_ORIG)
@@ -149,6 +163,8 @@ def clean_answer(raw: str) -> str:
     return text
 
 
+#returns true if both question and answer meet minimum length requirements
+#used in call_center_api.build_qa and import_call_center_2approved to filter out low-quality pairs
 def is_quality_pair(question: str, answer: str,
                     min_q: int = 20, min_a: int = 40) -> bool:
     return len(question) >= min_q and len(answer) >= min_a

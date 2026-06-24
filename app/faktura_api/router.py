@@ -1,27 +1,34 @@
-# Detect whether a user question needs a live Faktura API call,
-# and which specific intent it maps to.
+#detects whether a user question needs a live faktura api call and identifies which intent it maps to
+#used in bot_engine.py step 3 to decide if api context should replace rag context
 
 import re
 
 
+#returns true if the question contains any api trigger keywords or a 32-char document uid
+#used in bot_engine.process_user_question
 def should_use_faktura_api(question: str) -> bool:
     q = question.lower()
-    # 32-char hex UID always implies a document lookup
+    #32-char hex uid always implies a document lookup
     if re.search(r'\b[0-9a-fA-F]{32}\b', question):
         return True
     return any(kw in q for kw in _ALL_KEYWORDS)
 
 
+#extracts a 32-character hex document uid from the question text, returns None if not found
+#used in api_answer._check_document_sync
 def extract_uid(question: str) -> str | None:
-    """Extract 32-char hex document UID (Faktura/Soliq document identifier)."""
     match = re.search(r'\b([0-9a-fA-F]{32})\b', question)
     return match.group(1) if match else None
 
 
+#maps the question to a specific api intent string
+#checks from most specific (uid) to most general (inn check)
+#returns intent string or None if no match
+#used in bot_engine.process_user_question to pick the right api handler
 def detect_api_intent(question: str) -> str | None:
     q = question.lower()
 
-    # Document sync check — triggered by 32-char hex UID or explicit sync keywords
+    #document sync check — triggered by 32-char hex uid or explicit sync keywords
     if re.search(r'\b[0-9a-fA-F]{32}\b', question):
         return "check_document_sync"
 
@@ -30,7 +37,7 @@ def detect_api_intent(question: str) -> str | None:
                    "проверить статус документа", "sync document", "document sync"]):
         return "check_document_sync"
 
-    # INN-based lookups — check most specific first
+    #inn-based lookups — check most specific first
     if _match(q, ["плательщик ндс", "ндс плательщик", "nds payer", "является ли плательщиком ндс",
                    "платит ндс", "ндс платит"]):
         return "check_nds_payer"
@@ -64,12 +71,12 @@ def detect_api_intent(question: str) -> str | None:
     if _match(q, ["типы создания", "creation types", "getdocumentcreationtypes"]):
         return "get_document_creation_types"
 
-    # company info — broad INN queries go to full details if we have an INN
+    #company info — broad inn queries go to full details if we have an inn
     if _match(q, ["информация о компании", "данные компании", "getcompanybasicdetails",
                    "название компании", "адрес компании", "директор", "подробнее о компании"]):
         return "get_company_details"
 
-    # plain INN check — most common
+    #plain inn check — most common
     if _match(q, ["проверить инн", "проверь инн", "инн", "check company",
                    "компания зарегистрирована", "checkcompanyexist"]):
         return "check_company_exists"
@@ -79,10 +86,12 @@ def detect_api_intent(question: str) -> str | None:
 
 # ── helpers ────────────────────────────────────────────────────────────────────
 
+#returns true if any of the keywords appear in q
 def _match(q: str, keywords: list[str]) -> bool:
     return any(kw in q for kw in keywords)
 
 
+#full set of keywords that trigger api usage check in should_use_faktura_api
 _ALL_KEYWORDS = [
     # INN / company
     "инн", "inn", "check company", "компания зарегистрирована",

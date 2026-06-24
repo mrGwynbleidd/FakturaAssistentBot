@@ -1,3 +1,6 @@
+#admin incidents_create handler — multi-step FSM flow to create a new incident
+#collects title, problem_text, keywords, answer, end_time, match_mode then saves
+#used by admins to add active incident alerts that override normal RAG responses
 
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
@@ -16,6 +19,7 @@ from app.admin.states.incident_states import AddIncidentStates
 
 router = Router(name="admin_incidents_create")
 
+#returns button text in all three admin languages — used for filter matching
 def text_values(key: str) -> list[str]:
     return [
         get_admin_text(key, "ru"),
@@ -24,9 +28,11 @@ def text_values(key: str) -> list[str]:
     ]
 
 
+#returns True if the given text matches any cancel button value
 def is_cancel_text(text: str | None) -> bool:
     return text in text_values("btn_cancel")
 
+#entry point — "add incident" button press, clears state and asks for title
 @router.message(F.text.in_(text_values("btn_add_incident")))
 async def start_add_incident(message: Message, state: FSMContext):
 
@@ -45,6 +51,7 @@ async def start_add_incident(message: Message, state: FSMContext):
     )
 
 
+#step 1 — receives incident title, stores in FSM data, asks for problem_text
 @router.message(AddIncidentStates.waiting_for_title)
 async def incident_title(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id if message.from_user else None):
@@ -75,6 +82,7 @@ async def incident_title(message: Message, state: FSMContext):
     )
 
 
+#step 2 — receives problem description, stores in FSM data, asks for keywords
 @router.message(AddIncidentStates.waiting_for_problem_text)
 async def incident_problem_text(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id if message.from_user else None):
@@ -105,6 +113,7 @@ async def incident_problem_text(message: Message, state: FSMContext):
     )
 
 
+#step 3 — receives comma-separated keywords, stores in FSM data, asks for answer text
 @router.message(AddIncidentStates.waiting_for_keywords)
 async def incident_keywords(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id if message.from_user else None):
@@ -135,6 +144,7 @@ async def incident_keywords(message: Message, state: FSMContext):
     )
 
 
+#step 4 — receives incident answer text, stores, asks for end_time
 @router.message(AddIncidentStates.waiting_for_answer)
 async def incident_answer(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id if message.from_user else None):
@@ -166,7 +176,7 @@ async def incident_answer(message: Message, state: FSMContext):
     )
 
 
-
+#step 5 — receives optional end_time (blank/none/- = no expiry), asks for match_mode
 @router.message(AddIncidentStates.waiting_for_end_time)
 async def incident_end_time(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id if message.from_user else None):
@@ -184,6 +194,7 @@ async def incident_end_time(message: Message, state: FSMContext):
     
     end_time = (message.text or "").strip()
 
+    #normalize empty/none variants to empty string
     if end_time.lower() in {"none", "no", "-", "", "нет"}:
         end_time = ""
 
@@ -198,6 +209,7 @@ async def incident_end_time(message: Message, state: FSMContext):
     )
 
 
+#step 6 — receives match_mode selection, shows preview and asks for confirmation
 @router.message(AddIncidentStates.waiting_for_match_mode)
 async def incident_match_mode_handler(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id if message.from_user else None):
@@ -215,6 +227,7 @@ async def incident_match_mode_handler(message: Message, state: FSMContext):
     
     match_mode = (message.text or "contains").strip()
 
+    #fall back to "contains" if unrecognized mode selected
     if match_mode not in {"contains", "all_keywords"}:
         match_mode = "contains"
 
@@ -222,6 +235,7 @@ async def incident_match_mode_handler(message: Message, state: FSMContext):
 
     data = await state.get_data()
 
+    #build incident preview for admin to review before confirming
     preview = (
         f"{get_admin_text('incident_preview_title', language)}\n\n"
         f"Название: {data.get('title', '')}\n"
@@ -240,6 +254,8 @@ async def incident_match_mode_handler(message: Message, state: FSMContext):
     )
 
 
+#step 7 (final) — admin confirms or cancels; on confirm saves incident to incidents.csv
+#shows the generated incident_id after saving
 @router.message(AddIncidentStates.waiting_for_confirmation)
 async def incident_confirm(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id if message.from_user else None):
@@ -283,5 +299,3 @@ async def incident_confirm(message: Message, state: FSMContext):
         f"{get_admin_text('incident_saved', language)} \nID: {incident_id}",
         reply_markup=incident_after_save_keyboard(language),
     )
-
-    

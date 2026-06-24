@@ -1,4 +1,6 @@
-#Import call center cases to approved.csv
+#imports cleaned call center cases from call_center_cases_raw.csv into approved.csv
+#filters out low-quality pairs and optionally auto-approves them
+#used as a standalone script to bulk-import call center training data
 
 #import libs
 import csv
@@ -11,10 +13,13 @@ from app.faktura_api.call_center_cleaner import clean_question, clean_answer, is
 #base dir
 BASE_DIR = Path(__file__).resolve().parents[2]
 
-#path where cases are storing
+#path to the raw call center export created by call_center_api.save_callcenter_cases
 RAW_CALL_CENTER_PATH = BASE_DIR / "data" / "learning" / "call_center_cases_raw.csv"
 
 
+#reads call_center_cases_raw.csv, cleans each pair, and saves qualifying ones to approved.csv
+#auto_approve must be True to actually write — when False, all rows are counted as skipped
+#used as script entry point and from admin import workflows
 def import_callcenter_approved(
         min_question_len: int = 10,
         min_answer_len: int = 30,
@@ -37,14 +42,16 @@ def import_callcenter_approved(
             ticket_id = row.get("case_id", "").strip()
             case_id = row.get("case_id", f"callcenter_{ticket_id}").strip()
 
-            # очищаем от мусора Telegram-бота поддержки
+            #remove telegram support bot noise from both sides
             question = clean_question(raw_question)
             answer = clean_answer(raw_answer)
 
+            #skip pairs that are too short after cleaning
             if not is_quality_pair(question, answer, min_q=min_question_len, min_a=min_answer_len):
                 skipped += 1
                 continue
 
+            #when auto_approve is False, skip without saving (dry run mode)
             if not auto_approve:
                 skipped += 1
                 continue
@@ -68,4 +75,3 @@ def import_callcenter_approved(
 
 if __name__ == "__main__":
     import_callcenter_approved(auto_approve=True)
-

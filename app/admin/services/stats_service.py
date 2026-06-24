@@ -1,3 +1,5 @@
+#collects and formats bot statistics from all csv data files
+#used in admin stats handler to show counts to the admin
 
 import csv
 from pathlib import Path
@@ -7,12 +9,15 @@ from app.admin.services.review_service import count_review_cases
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 
+#paths to all tracked data files
 QA_OUTPUTS_PATH = BASE_DIR / "data" / "raw" / "QA_outputs.csv"
 GROUP_PHOTOS_LOG_PATH = BASE_DIR / "data" / "raw" / "group_photos.csv"
 ADMIN_KNOWLEDGE_PATH = BASE_DIR / "data" / "admin" / "admin_knowledge.csv"
 INCIDENTS_PATH = BASE_DIR / "data" / "admin" / "incidents.csv"
 
 
+#counts data rows in a csv file, returns 0 if file does not exist
+#used in get_bot_stats to count records in each file
 def count_csv_rows(path: Path) -> int:
     if not path.exists():
         return 0
@@ -22,6 +27,8 @@ def count_csv_rows(path: Path) -> int:
         reader =csv.DictReader(f)
         return sum(1 for _ in reader)
     
+#builds a stats dict with counts from all relevant csv files and review case breakdown
+#used in format_stats_text
 def get_bot_stats() -> dict:
     review_counts = count_review_cases()
     active_incidents = list_active_incidents()
@@ -38,6 +45,8 @@ def get_bot_stats() -> dict:
     }
 
 
+#formats the stats dict into a human-readable text block in the given language
+#used in admin stats handler to send statistics message
 def format_stats_text(language: str = "ru") -> str:
     stats = get_bot_stats()
 

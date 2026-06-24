@@ -1,19 +1,27 @@
+#generates answers using google gemini LLM given a context and question
+#falls back across model list on rate limit or error
+#used in bot_engine.py step 4
+
 from google import genai
 from app.config import GEMINI_API_KEY
 import time
 
+#initialize gemini client
 client = genai.Client(api_key=GEMINI_API_KEY)
 
+#ordered list of models to try — first preferred, second fallback
 GEMINI_MODELS = [
     "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
 ]
 
 
+#generates an answer for the question using context retrieved from RAG
+#tries each model in GEMINI_MODELS with 2 attempts before returning error message
+#used in bot_engine.process_user_question for non-api questions
 def generate_answer(question: str, context: str, language: str = "ru") -> str:
 
-    # БАГ БЫЛ ЗДЕСЬ: context мог прийти как bool (True/False от Faktura API)
-    # Принудительно приводим к строке
+    #context may arrive as bool from faktura api — force to string
     if not isinstance(context, str):
         context = str(context)
 
@@ -67,6 +75,7 @@ QUESTION:
 """
     last_error = None
 
+    #try each model twice before giving up
     for model in GEMINI_MODELS:
         for attempt in range(2):
             try:
@@ -84,6 +93,8 @@ QUESTION:
     return get_model_unavaiable_answer(language, last_error)
 
 
+#returns a fallback message when no context was found, in the user's language
+#used in generate_answer when context is empty
 def get_no_context_answer(language: str = "ru") -> str:
     if language == "en":
         return (
@@ -102,6 +113,8 @@ def get_no_context_answer(language: str = "ru") -> str:
     )
 
 
+#returns a fallback message when all gemini model attempts fail, in the user's language
+#used in generate_answer after exhausting all retries
 def get_model_unavaiable_answer(language: str = "ru", error: Exception | None = None) -> str:
     if language == "en":
         return (

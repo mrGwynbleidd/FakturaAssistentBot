@@ -1,3 +1,5 @@
+#provides admin access checks and logs admin actions to a csv audit log
+#used by all admin handlers to verify permissions and record activity
 
 import csv
 from pathlib import Path
@@ -10,6 +12,7 @@ BASE_DIR = Path(__file__).resolve().parents[3]
 ADMIN_DATA_DIR= BASE_DIR / "data" / "admin"
 ADMIN_ACTIONS_LOG_PATH = ADMIN_DATA_DIR / "admin_action_log.csv"
 
+#csv column names for admin action log
 ADMIN_ACTION_FIELDNAMES = [
     "datetime",
     "admin_id",
@@ -17,14 +20,20 @@ ADMIN_ACTION_FIELDNAMES = [
     "details",
 ]
 
+#returns true if user_id belongs to an admin, delegates to admin_config.is_admin_user
+#used in all admin handlers as access guard
 def is_admin(user_id: int | None) -> bool:
     return is_admin_user(user_id)
 
+#returns the preferred language for an admin — currently always ru
+#placeholder for future per-admin language preference
 def get_admin_language(user_id: int | None) -> str:
     return "ru"
 
 from app.learning.review_manager import clean_text
 
+#ensures the admin action log csv file exists with the correct header
+#creates parent directories and writes header if file is missing
 def ensure_admin_log_file() -> None:
     ADMIN_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -37,6 +46,8 @@ def ensure_admin_log_file() -> None:
         writer.writeheader()
 
 
+#appends a single admin action row to admin_action_log.csv
+#used throughout admin services to record approve, reject, create, and update actions
 def log_admin_action(
         admin_id: int | None,
         action: str,
@@ -55,4 +66,3 @@ def log_admin_action(
         writer = csv.DictWriter(f, fieldnames=ADMIN_ACTION_FIELDNAMES, quoting=csv.QUOTE_ALL,)
 
         writer.writerow(row)
-        

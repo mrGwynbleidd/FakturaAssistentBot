@@ -1,3 +1,6 @@
+#adds or rebuilds approved cases in the chroma approved collection
+#used by review_service when admin approves a review case, and by index_builder
+#updates the index immediately without a full rebuild
 
 from app.rag.approved_loader import load_approved_cases
 from app.rag.chroma_client import get_or_create_collection, reset_collection
@@ -5,12 +8,16 @@ from app.rag.embedding import embed_texts
 from app.rag.settings import COLLECTION_APPROVED
 from app.rag.text_utils import clean_text, make_id, normalize_language
 
+#builds a chroma document dict from a single approved case, normalizing all fields
+#returns a dict with id, text, and metadata ready for collection.add
+#used in add_approved_case_to_index
 def build_approved_doc(case_id: str, question: str, answer: str, language: str = "ru", category: str = "review", source_type: str ="admin_review", source_id: str = "") -> dict:
     question = clean_text(question)
     answer = clean_text(answer)
     language = normalize_language(language)
     category = clean_text(category or "review")
 
+    #generate a stable id if none provided
     if not case_id:
         case_id = make_id("approved", question + answer)
     text = (
@@ -36,6 +43,10 @@ def build_approved_doc(case_id: str, question: str, answer: str, language: str =
     }
 
 
+#adds or replaces a single approved case in the chroma collection
+#deletes existing entry with same id first, then adds fresh embedding
+#returns True on success, False if question or answer is empty
+#used in review_service.save_to_approved_cases after admin approval
 def add_approved_case_to_index(case_id: str, question: str, answer: str, language: str = "ru", category: str = "review", source_type: str = "admin_review", source_id: str = "") -> bool:
     if not question or not answer:
         return False
@@ -43,6 +54,7 @@ def add_approved_case_to_index(case_id: str, question: str, answer: str, languag
     collection = get_or_create_collection(COLLECTION_APPROVED)
     doc = build_approved_doc(case_id, question, answer, language, category, source_type, source_id)
 
+    #remove existing entry to avoid duplicates
     try:
         collection.delete(ids=[doc["id"]])
     except Exception:
@@ -57,6 +69,9 @@ def add_approved_case_to_index(case_id: str, question: str, answer: str, languag
     return True
 
 
+#completely rebuilds the approved collection from approved.csv
+#returns count of indexed documents
+#used when a full re-index of approved cases is needed
 def rebuild_approved_index() -> int:
     collection = reset_collection(COLLECTION_APPROVED)
     docs = load_approved_cases()

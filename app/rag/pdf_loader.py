@@ -51,14 +51,18 @@
 #     return documents
 
 
-
-
+#reads pdf files from the pdf directory, extracts text page by page
+#returns list of document dicts ready for splitting and indexing
+#used in index_builder.build_pdf_index
 
 from pathlib import Path
 from app.rag.settings import PDF_DIR
 from app.rag.text_utils import clean_text, make_id
 
 
+#extracts full text from a single pdf file, one labeled block per page
+#tries pypdf first then PyPDF2 as fallback
+#returns concatenated page texts or empty string if file has no extractable text
 def extract_pdf_text(path: Path) -> str:
     try:
         from pypdf import PdfReader
@@ -81,9 +85,13 @@ def extract_pdf_text(path: Path) -> str:
         if text:
             parts.append(f"Page {page_index}:\n{text}")
 
-    return "\n\n".join(parts)  # вне цикла — собираем все страницы
+    #join all pages outside the loop
+    return "\n\n".join(parts)
 
 
+#loads all pdf files from pdf_dir, returns list of document dicts with id, text, and metadata
+#skips files with no extractable text
+#used in index_builder.build_pdf_index
 def load_pdfs(pdf_dir: Path = PDF_DIR) -> list[dict]:
     if not pdf_dir.exists():
         return []
@@ -94,7 +102,6 @@ def load_pdfs(pdf_dir: Path = PDF_DIR) -> list[dict]:
         if not text:
             continue
 
-            #####
         doc_id = make_id("pdf", str(pdf_path.name))
         documents.append({
             "id": doc_id,

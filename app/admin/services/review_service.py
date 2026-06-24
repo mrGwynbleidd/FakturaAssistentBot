@@ -1,3 +1,6 @@
+#manages needs_review.csv — load, update, approve, and reject review cases
+#on approval also saves to approved.csv and updates the chroma index
+#used by review_cases handler and review_cases router
 
 import csv
 from pathlib import Path
@@ -9,6 +12,7 @@ BASE_DIR = Path(__file__).resolve().parents[3]
 
 NEEDS_REVIEW_PATH = BASE_DIR / "data" / "learning" / "needs_review.csv"
 
+#csv column names for needs_review.csv
 NEEDS_REVIEW_FIELDNAMES = [
     "case_id",
     "datetime",
@@ -24,6 +28,7 @@ NEEDS_REVIEW_FIELDNAMES = [
 
 from app.learning.review_manager import clean_text
 
+#ensures needs_review.csv exists with header, creates parent directories if needed
 def ensure_needs_review_file() -> None:
     NEEDS_REVIEW_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -36,6 +41,8 @@ def ensure_needs_review_file() -> None:
         writer.writeheader()
 
 
+#reads all rows from needs_review.csv and returns them as a list of dicts
+#used by load_review_cases, get_review_case, and count_review_cases
 def read_all_review_cases() -> list[dict]:
     ensure_needs_review_file()
 
@@ -45,6 +52,8 @@ def read_all_review_cases() -> list[dict]:
         return list(reader)
     
 
+#overwrites needs_review.csv with the given rows list
+#used after updating status fields in memory
 def write_all_review_cases(rows: list[dict]) -> None:
     NEEDS_REVIEW_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -55,6 +64,8 @@ def write_all_review_cases(rows: list[dict]) -> None:
         writer.writerows(rows)
 
 
+#returns review cases filtered by status and capped by limit, newest first
+#used in review_cases handler to show pending cases to admin
 def load_review_cases(status: str | None = "needs_review", limit: int | None = None,) -> list[dict]:
 
     rows = read_all_review_cases()
@@ -65,6 +76,7 @@ def load_review_cases(status: str | None = "needs_review", limit: int | None = N
             if row.get("status") == status
         ]
 
+    #newest first
     rows = list(reversed(rows))
 
     if limit:
@@ -72,6 +84,8 @@ def load_review_cases(status: str | None = "needs_review", limit: int | None = N
     
     return rows
 
+#returns a single review case by case_id, or None if not found
+#used in approve_case_command to load the case before asking for admin answer
 def get_review_case(case_id: str) -> dict | None:
     rows = read_all_review_cases()
 
@@ -81,6 +95,9 @@ def get_review_case(case_id: str) -> dict | None:
         
     return None
 
+#updates a single row's status and optionally admin_answer and notes in needs_review.csv
+#returns True if the row was found and updated
+#used in approve_review_case and reject_review_case
 def update_review_case_status(case_id: str, status: str, admin_answer: str = "", notes: str = "",) -> bool:
 
     rows = read_all_review_cases()
@@ -108,6 +125,8 @@ def update_review_case_status(case_id: str, status: str, admin_answer: str = "",
     return True
 
 
+#saves an approved case to approved.csv and immediately updates the chroma index
+#used in approve_review_case
 def save_to_approved_cases(
         case_id: str,
         question: str,
@@ -132,7 +151,7 @@ def save_to_approved_cases(
         notes=notes,
     )
 
-    
+    #update chroma index immediately so the new answer is searchable without full rebuild
     try:
         from app.rag.approved_index_updater import add_approved_case_to_index
         add_approved_case_to_index(
@@ -146,12 +165,11 @@ def save_to_approved_cases(
         )
     except Exception as err:
         print("Approved case saved to CSV, but index update failed:", err)
-    
-
-#########
 
 
-
+#approves a review case: saves to approved.csv, updates chroma, marks case as approved in csv
+#returns True on success, False if case_id not found
+#used in review_cases handler approve_case_answer
 def approve_review_case(
         case_id: str,
         admin_answer: str,
@@ -193,6 +211,9 @@ def approve_review_case(
     return updated
 
 
+#marks a review case as rejected in needs_review.csv and logs the action
+#returns True on success
+#used in review_cases handler reject_case_command
 def reject_review_case(
         case_id: str,
         admin_id: int | None = None,
@@ -214,6 +235,8 @@ def reject_review_case(
     return updated
 
 
+#counts review cases by status and returns a summary dict
+#used in stats_service.get_bot_stats
 def count_review_cases() -> dict:
     rows = read_all_review_cases()
 
@@ -233,4 +256,3 @@ def count_review_cases() -> dict:
             result["other"] +=1
 
     return result
- 

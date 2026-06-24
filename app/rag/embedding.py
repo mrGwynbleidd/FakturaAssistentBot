@@ -40,11 +40,14 @@
 #     return embedding.tolist()
 
 
+#loads and caches the sentence transformer embedding model, embeds text into vectors
+#used by index_builder and priority_retriever for all chroma queries and indexing
 
 from functools import lru_cache
 from app.rag.settings import EMBEDDING_MODEL_NAME
 
-@lru_cache(maxsize=1)
+#lazily loads the model on first call and caches it for the process lifetime
+#returns SentenceTransformer instance
 def get_embedding_model():
     try:
         from sentence_transformers import SentenceTransformer
@@ -54,6 +57,11 @@ def get_embedding_model():
         ) from err
     return SentenceTransformer(EMBEDDING_MODEL_NAME)
 
+#caches the model instance so it is only loaded once
+get_embedding_model = lru_cache(maxsize=1)(get_embedding_model)
+
+#embeds a list of texts into normalized float vectors, returns empty list if input is empty
+#used in index_builder.add_documents_to_collection and approved_index_updater
 def embed_texts(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
@@ -62,5 +70,7 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
     embeddings = model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
     return embeddings.tolist()
 
+#embeds a single text string, returns a single float vector
+#used in priority_retriever.search_collection
 def embed_text(text: str) -> list[float]:
     return embed_texts([text])[0]

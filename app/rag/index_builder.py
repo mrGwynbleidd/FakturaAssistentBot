@@ -138,6 +138,10 @@
 #     print(f"Ready! In Chroma was saved {len(texts)} fragments.")
 
 
+#builds chroma indexes from approved cases, admin knowledge, and pdf chunks
+#each index can be rebuilt independently or all at once
+#used by build_index.py and admin knowledge management
+
 from app.rag.approved_loader import load_approved_cases
 from app.rag.admin_knowledge_loader import load_admin_knowledge
 from app.rag.pdf_loader import load_pdfs
@@ -147,9 +151,12 @@ from app.rag.chroma_client import reset_collection, get_or_create_collection
 from app.rag.settings import COLLECTION_APPROVED, COLLECTION_ADMIN_KNOWLEDGE, COLLECTION_PDF
 
 
-
+#adds a list of document dicts to a named chroma collection in batches
+#returns count of documents added
+#used by build_approved_index, build_admin_knowledge_index, build_pdf_index
 def add_documents_to_collection(collection_name: str, documents: list[dict], reset: bool=True, batch_size: int = 64) -> int:
 
+    #reset drops and recreates the collection, otherwise append to existing
     collection = reset_collection(collection_name) if reset else get_or_create_collection(collection_name)
 
     if not documents:
@@ -168,23 +175,28 @@ def add_documents_to_collection(collection_name: str, documents: list[dict], res
     return total
 
 
+#rebuilds the approved cases chroma collection from approved.csv, returns document count
 def build_approved_index(reset: bool = True) -> int:
     count = add_documents_to_collection(COLLECTION_APPROVED, load_approved_cases(), reset=reset)
     print(f"Approved cases indexed: {count}")
     return count
 
+#rebuilds the admin knowledge chroma collection from admin_knowledge.csv, returns document count
 def build_admin_knowledge_index(reset: bool = True) -> int:
     count = add_documents_to_collection(COLLECTION_ADMIN_KNOWLEDGE, load_admin_knowledge(), reset=reset)
     print(f"Admin knowledge indexed: {count}")
     return count
 
 
+#loads pdfs, splits into chunks, rebuilds the pdf chroma collection, returns chunk count
 def build_pdf_index(reset: bool =True) -> int:
     pdf_chunks = split_documents(load_pdfs())
     count = add_documents_to_collection(COLLECTION_PDF, pdf_chunks, reset=reset)
     print(f"PDF chunks indexed: {count}")
     return count
 
+#rebuilds all three indexes and returns a dict with counts per collection
+#used in build_index.py as the main entry point
 def build_all_indexes(reset: bool = True) -> dict:
     result = {
         "approved": build_approved_index(reset=reset),

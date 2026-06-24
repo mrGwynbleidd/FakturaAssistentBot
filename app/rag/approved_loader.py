@@ -1,3 +1,6 @@
+#loads approved Q&A pairs from approved.csv and converts them to chroma document dicts
+#handles flexible column naming and filters out non-approved rows
+#used in index_builder.build_approved_index
 
 import csv
 import hashlib
@@ -5,6 +8,7 @@ from pathlib import Path
 
 from app.rag.settings import APPROVED_CSV_PATH
 
+#keyword lists for fuzzy column detection — tries each keyword against csv headers
 QUESTION_KEYWORDS = [
     "question",
     "user_question",
@@ -64,6 +68,7 @@ ID_KEYWORDS = [
 ]
 
 
+#strips null bytes and collapses whitespace in a cell value
 def clean_text(value: str | None) -> str:
     if not value:
         return ""
@@ -71,10 +76,12 @@ def clean_text(value: str | None) -> str:
     return " ".join(str(value).replace("\x00", " ").split())
 
 
+#returns a truncated sha256 hex digest for generating stable row ids
 def stable_hash(text: str, length: int = 16) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:length]
 
 
+#normalizes a column name to lowercase with underscores for comparison
 def normalize_key(key: str | None) -> str:
     if not key:
         return ""
@@ -82,6 +89,7 @@ def normalize_key(key: str | None) -> str:
     return str(key).strip().lower().replace(" ", "_")
 
 
+#maps language aliases to standard codes ru/uz/en
 def normalize_language(value: str | None) -> str:
     value = clean_text(value).lower()
 
@@ -100,6 +108,9 @@ def normalize_language(value: str | None) -> str:
     return value
 
 
+#scans fieldnames list for the first header that contains any of the keywords
+#returns the original header name or None if not found
+#used in row_to_document to locate question/answer/status columns
 def find_column(fieldnames: list[str], keywords: list[str]) -> str | None:
     normalized_map = {
         normalize_key(fieldname): fieldname
@@ -116,6 +127,7 @@ def find_column(fieldnames: list[str], keywords: list[str]) -> str | None:
     return None
 
 
+#returns cleaned cell value for a given column, or default if column is None
 def get_value(row: dict, column: str | None, default: str = "") -> str:
     if not column:
         return default
@@ -123,6 +135,8 @@ def get_value(row: dict, column: str | None, default: str = "") -> str:
     return clean_text(row.get(column, default))
 
 
+#returns all non-empty cleaned cell values from a row as a list
+#used as fallback when column names cannot be detected
 def get_first_non_empty_values(row: dict) -> list[str]:
     values = []
 
@@ -135,6 +149,9 @@ def get_first_non_empty_values(row: dict) -> list[str]:
     return values
 
 
+#converts a single csv row to a chroma document dict
+#uses keyword-based column detection with fallback to positional values
+#returns None if question or answer cannot be extracted or row status is not approved
 def row_to_document(
     row: dict,
     row_number: int,
@@ -150,8 +167,7 @@ def row_to_document(
     question = get_value(row, question_column)
     answer = get_value(row, answer_column)
 
-    # Fallback: если названия колонок совсем другие,
-    # берём первые две непустые колонки как question и answer.
+    #fallback: if column names are completely non-standard, use first two non-empty values
     if not question or not answer:
         values = get_first_non_empty_values(row)
 
@@ -171,6 +187,7 @@ def row_to_document(
 
     status = get_value(row, status_column, "approved").lower()
 
+    #skip rows with explicit non-approved status
     if status and status not in {
         "approved",
         "active",
@@ -186,6 +203,7 @@ def row_to_document(
 
     case_id = get_value(row, id_column)
 
+    #generate stable id from content if no id column found
     if not case_id:
         case_id = "approved_" + stable_hash(question + answer)
 
@@ -217,6 +235,9 @@ def row_to_document(
     }
 
 
+#reads approved.csv and returns a list of chroma-ready document dicts
+#skips missing file, empty files, and invalid rows silently
+#used in index_builder.build_approved_index and approved_index_updater.rebuild_approved_index
 def load_approved_cases(path: Path = APPROVED_CSV_PATH) -> list[dict]:
     if not path.exists():
         print(f"Approved CSV not found: {path}")
@@ -247,5 +268,3 @@ def load_approved_cases(path: Path = APPROVED_CSV_PATH) -> list[dict]:
     print(f"Approved cases loaded: {len(documents)}")
 
     return documents
-
-

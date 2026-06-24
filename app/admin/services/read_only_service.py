@@ -1,3 +1,6 @@
+#manages read-only mode settings stored in read_only_settings.json
+#read-only mode prevents the bot from answering in selected or all chats
+#used in read_only handler and read_only_middleware
 
 import json
 from pathlib import Path
@@ -10,8 +13,10 @@ BASE_DIR = Path(__file__).resolve().parents[3]
 ADMIN_DATA_DIR = BASE_DIR / "data" / "admin"
 READ_ONLY_SETTINGS_PATH = ADMIN_DATA_DIR / "read_only_settings.json"
 
+#valid mode values: all = block everywhere, selected = block specific chats, off = disabled
 READ_ONLY_MODES = {"all", "selected", "off"}
 
+#default settings when no file exists
 DEFAULT_SETTINGS = {
     "mode": "off",
     "chat_ids": [],
@@ -19,6 +24,7 @@ DEFAULT_SETTINGS = {
     "updated_by": "",
 }
 
+#creates the settings file with default values if it does not exist
 def ensure_settings_file() -> None:
     ADMIN_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -27,12 +33,15 @@ def ensure_settings_file() -> None:
     
     save_settings = save_settings(DEFAULT_SETTINGS.copy())
 
+#normalizes a chat_id to a string, returns empty string if None
 def normalize_chat_id(chat_id: int | str | None) -> str:
     if chat_id is None:
         return ""
     
     return str(chat_id).strip()
 
+#converts a chat_ids value of any type (list, str, single value) to a normalized list of strings
+#used when loading and saving chat_ids in settings
 def normalize_chat_ids_list(value) -> list[str]:
     if value is None:
         return []
@@ -58,6 +67,9 @@ def normalize_chat_ids_list(value) -> list[str]:
         normalize_chat_id(value)
     ]
 
+#reads settings from json file, falls back to defaults on any error
+#validates mode and chat_ids fields before returning
+#used by all read-only service functions
 def load_settings() -> dict:
     ensure_settings_file()
 
@@ -71,9 +83,11 @@ def load_settings() -> dict:
         settings = DEFAULT_SETTINGS.copy()
         settings.update(data)
 
+        #reset invalid mode to off
         if settings.get("mode") not in READ_ONLY_MODES:
             settings["mode"] = "off"
 
+        #ensure chat_ids is always a list
         if not isinstance(settings.get("chat_ids"), list):
             settings["chat_ids"] = []
 
@@ -89,6 +103,8 @@ def load_settings() -> dict:
         return DEFAULT_SETTINGS.copy()
     
 
+#writes settings dict to json file
+#used by set_read_only_mode, add_read_only_chat, and remove_read_only_chat
 def save_settings(settings: dict) -> None:
     ADMIN_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -96,11 +112,16 @@ def save_settings(settings: dict) -> None:
         json.dump(settings, f, ensure_ascii=False,indent=2, )
 
 
+#returns the current read-only mode string ("all", "selected", or "off")
+#used in is_read_only_for_chat
 def get_read_only_mode() -> str:
     settings = load_settings()
     return settings.get("mode", "off")
 
 
+#sets the global read-only mode, saves settings, logs the action
+#returns False if mode value is invalid
+#used in read_only handler buttons
 def set_read_only_mode(
         mode: str,
         admin_id: int | None = None,
@@ -124,11 +145,16 @@ def set_read_only_mode(
     return True
 
 
+#returns the normalized list of chat ids currently in the read-only list
+#used in is_read_only_for_chat and format_read_only_status
 def get_read_only_chat_ids() -> list[str]:
     settings = load_settings()
     return normalize_chat_ids_list(settings.get("chat_ids", []))
 
 
+#adds a chat_id to the read-only list, deduplicates, saves, and logs
+#returns False if chat_id is empty
+#used in read_only handler add button
 def add_read_only_chat(
         chat_id: int | str,
         admin_id: int | None = None,
@@ -144,6 +170,7 @@ def add_read_only_chat(
         settings.get("chat_ids", [])
     )
 
+    #deduplicate while preserving order
     new_chat_ids = list(
         dict.fromkeys(
             current_chat_ids + [chat_id_str]
@@ -165,6 +192,9 @@ def add_read_only_chat(
     return True
 
 
+#removes a chat_id from the read-only list, saves, and logs
+#returns False if chat_id is empty or not in the list
+#used in read_only handler remove button
 def remove_read_only_chat(
         chat_id: int | str,
         admin_id: int | None = None,
@@ -205,6 +235,8 @@ def remove_read_only_chat(
     return True
 
 
+#returns True if the given chat is currently blocked by read-only mode
+#used in read_only_middleware to decide whether to process a message
 def is_read_only_for_chat(chat_id: int | str) -> bool:
     settings = load_settings()
     mode = settings.get("mode", "off")
@@ -222,6 +254,8 @@ def is_read_only_for_chat(chat_id: int | str) -> bool:
     
     return False
 
+#formats current read-only settings as a human-readable status text
+#used in send_read_only_menu to display current state to admin
 def format_read_only_status(language: str= "ru") -> str:
     settings = load_settings()
     mode = settings.get("mode", "off")
@@ -248,4 +282,3 @@ def format_read_only_status(language: str= "ru") -> str:
         f"Обновлено: {updated_at or 'нет данных'}\n"
         f"Кем обновлено: {updated_by or 'нет данных'}"
     )
-

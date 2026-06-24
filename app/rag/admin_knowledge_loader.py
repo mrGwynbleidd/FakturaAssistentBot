@@ -51,6 +51,9 @@
 #     return documents
 
 
+#loads admin knowledge Q&A from admin_knowledge.csv and converts to chroma document dicts
+#filters to only approved/active rows, generates stable ids for entries without one
+#used in index_builder.build_admin_knowledge_index
 
 import csv
 from pathlib import Path
@@ -59,6 +62,9 @@ from app.rag.settings import ADMIN_KNOWLEDGE_CSV_PATH
 from app.rag.text_utils import safe_get, make_id, normalize_language
 
 
+#reads admin_knowledge.csv and returns a list of chroma-ready document dicts
+#skips missing file, non-approved rows, and entries without question or answer
+#used in index_builder.build_admin_knowledge_index
 def load_admin_knowledge(path: Path = ADMIN_KNOWLEDGE_CSV_PATH) -> list[dict]:
 
     if not path.exists():
@@ -71,6 +77,7 @@ def load_admin_knowledge(path: Path = ADMIN_KNOWLEDGE_CSV_PATH) -> list[dict]:
         for row in reader:
             status = safe_get(row, ["status"], "approved").lower()
 
+            #skip rows that are explicitly not approved
             if status and status not in {"approved", "active", "yes", "true"}:
                 continue
 
@@ -81,6 +88,7 @@ def load_admin_knowledge(path: Path = ADMIN_KNOWLEDGE_CSV_PATH) -> list[dict]:
                 continue
 
             knowledge_id = safe_get(row, ["knowledge_id", "id"])
+            #generate stable id if none exists
             if not knowledge_id:
                 knowledge_id = make_id("knowledge", question + answer)
 
@@ -89,6 +97,7 @@ def load_admin_knowledge(path: Path = ADMIN_KNOWLEDGE_CSV_PATH) -> list[dict]:
 
             tags = safe_get(row, ["tags"], "")
 
+            #build structured text block for embedding
             document_text = (
                 "ADMIN KNOWLEDGE\n"
                 f"Question: {question}\n"

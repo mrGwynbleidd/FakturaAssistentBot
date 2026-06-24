@@ -1,3 +1,7 @@
+#dispatches api intent to the correct faktura endpoint and formats the result as LLM context
+#handles all intent types: company lookup, document status, sync check, catalog search
+#used in bot_engine.py step 3 when is_api_request is True
+
 import re
 import json
 import logging
@@ -24,18 +28,22 @@ from app.faktura_api.router import extract_uid
 log = logging.getLogger("bot")
 
 
+#extracts a 9-digit inn from the question text, returns None if not found
+#used in get_api_context for inn-based intents
 def extract_inn(question: str) -> str | None:
-    """Extract 9-digit INN from question text."""
     match = re.search(r"\b\d{9}\b", question)
     return match.group(0) if match else None
 
 
+#extracts an IKPU code (7-17 digits) from the question text, returns None if not found
+#used in get_api_context for product catalog search
 def extract_ikpu(question: str) -> str | None:
-    """Extract IKPU code (typically 17 digits) from question text."""
     match = re.search(r"\b\d{7,17}\b", question)
     return match.group(0) if match else None
 
 
+#returns a context string and source list prompting the user to provide a 9-digit inn
+#used when an inn-based intent is detected but no inn found in the question
 def _no_inn_context(hint: str = "") -> tuple[str, list[dict]]:
     msg = (
         "Пользователь хочет получить информацию по ИНН, "
@@ -46,11 +54,16 @@ def _no_inn_context(hint: str = "") -> tuple[str, list[dict]]:
     return msg, [{"source": "Faktura API", "source_type": "api"}]
 
 
+#builds a standard api source dict with intent and optional extra fields
+#used throughout get_api_context
 def _make_source(label: str, intent: str, **extra) -> dict:
     return {"source": f"Faktura API: {label}", "source_type": "api",
             "api_intent": intent, **extra}
 
 
+#dispatches to the appropriate api handler based on intent string
+#returns (context_text, sources) tuple for use as LLM context
+#used in bot_engine.process_user_question when is_api_request is True
 def get_api_context(question: str, intent: str) -> tuple[str, list[dict]]:
 
     # ── document lookups (no INN needed) ──────────────────────────────────────
@@ -76,7 +89,7 @@ def get_api_context(question: str, intent: str) -> tuple[str, list[dict]]:
 
     # ── product catalog search ─────────────────────────────────────────────────
     if intent == "search_product_catalog":
-        # pull search term: everything after "товар"/"икпу"/"ikpu" etc.
+        #extract search term from the question by stripping known trigger words
         q = question.strip()
         search_text = re.sub(
             r"(найди|найти|поиск|икпу|ikpu|каталог товаров|товар|код товара)\s*",
@@ -90,7 +103,7 @@ def get_api_context(question: str, intent: str) -> tuple[str, list[dict]]:
         ctx = format_json_context(data, title=f"Каталог товаров: поиск '{search_text}'")
         return ctx, [_make_source(f"ProductCatalogs/Search?{search_text}", intent)]
 
-    # ── INN-based lookups ──────────────────────────────────────────────────────
+    # ── inn-based lookups ──────────────────────────────────────────────────────
     inn = extract_inn(question)
 
     if intent == "check_company_exists":
@@ -172,15 +185,14 @@ def get_api_context(question: str, intent: str) -> tuple[str, list[dict]]:
     return "", []
 
 
-# ── Document synchronisation check ─────────────────────────────────────────────
+# ── document synchronisation check ─────────────────────────────────────────────
 
+#checks whether a document's status in faktura matches soliq
+#requires both inn (9 digits) and document uid (32-char hex) in the question
+#prompts for missing data if either is absent
+#returns (context_text, sources) with is_critical flag if statuses mismatch
+#used in get_api_context for check_document_sync intent
 def _check_document_sync(question: str) -> tuple[str, list[dict]]:
-    """
-    Check whether a document's status in Faktura matches Soliq.
-
-    Requires both INN (9 digits) and document UID (32-char hex) in the message.
-    If either is missing, returns a prompt asking for the missing info.
-    """
     inn = extract_inn(question)
     uid = extract_uid(question)
 
@@ -214,7 +226,7 @@ def _check_document_sync(question: str) -> tuple[str, list[dict]]:
 
     log.info(f"🔄 Проверка синхронизации: ИНН={inn}, UID={uid}")
 
-    # ── fetch from Faktura API ────────────────────────────────────────────────
+    # ── fetch from faktura api ────────────────────────────────────────────────
     status_data = None
     details_data = None
     status_error = None
@@ -232,7 +244,7 @@ def _check_document_sync(question: str) -> tuple[str, list[dict]]:
         details_error = str(e)
         log.warning(f"GetDocumentDetails error: {e}")
 
-    # both failed — can't check
+    #both calls failed — cannot check sync
     if status_data is None and details_data is None:
         ctx = (
             f"ИНН: {inn}\nUID: {uid}\n\n"
@@ -246,7 +258,7 @@ def _check_document_sync(question: str) -> tuple[str, list[dict]]:
     # ── analyse statuses ──────────────────────────────────────────────────────
     faktura_status, soliq_status, mismatch = _extract_sync_statuses(status_data, details_data)
 
-    # build context for Gemini
+    #build context block for Gemini to generate the final user-facing message
     sections = [
         f"ИНН компании: {inn}",
         f"UID документа: {uid}",
@@ -289,21 +301,20 @@ def _check_document_sync(question: str) -> tuple[str, list[dict]]:
 
     ctx = "\n".join(sections)
 
-    # critical flag goes into source so bot_engine forces review
+    #is_critical flag causes bot_engine to force a review case regardless of answer quality
     source = _make_source(f"CheckDocumentSync/{inn}/{uid}", "check_document_sync",
                           inn=inn, uid=uid, is_critical=mismatch)
 
     return ctx, [source]
 
 
+#extracts faktura and soliq status strings from api response objects
+#returns (faktura_status, soliq_status, is_mismatch) — mismatch is true only if both differ
+#used in _check_document_sync
 def _extract_sync_statuses(
     status_data: list | dict | None,
     details_data: dict | None,
 ) -> tuple[str, str, bool]:
-    """
-    Extract Faktura status and Soliq status from API responses.
-    Returns (faktura_status_text, soliq_status_text, is_mismatch).
-    """
     faktura_status = ""
     soliq_status = ""
 
@@ -327,7 +338,7 @@ def _extract_sync_statuses(
             "soliqStatus", "soliqStatusName", "taxStatus",
         ])
 
-    # ── supplement from GetDetails if not found yet ───────────────────────────
+    # ── supplement from GetDetails if not found in status response ────────────
     if details_data and isinstance(details_data, dict):
         if not faktura_status:
             faktura_status = _read_status_field(details_data, [
@@ -339,11 +350,9 @@ def _extract_sync_statuses(
                 "soliqStatusDescription", "soliq_status",
             ])
 
-    # ── determine mismatch ────────────────────────────────────────────────────
-    # mismatch only if BOTH are known and they differ
+    # ── determine mismatch — only if both statuses are known ──────────────────
     mismatch = False
     if faktura_status and soliq_status:
-        # normalise: strip whitespace, lowercase
         f_norm = str(faktura_status).strip().lower()
         s_norm = str(soliq_status).strip().lower()
         if f_norm != s_norm:
@@ -352,8 +361,9 @@ def _extract_sync_statuses(
     return str(faktura_status), str(soliq_status), mismatch
 
 
+#tries multiple field name variants on a dict and returns the first non-empty value found
+#used in _extract_sync_statuses to handle api response field name variations
 def _read_status_field(obj: dict, field_names: list[str]) -> str:
-    """Try multiple field name variants, return first non-empty value found."""
     for name in field_names:
         val = obj.get(name)
         if val is not None and str(val).strip():

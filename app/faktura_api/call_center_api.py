@@ -1,4 +1,5 @@
-#Save tickets from call center api
+#fetches closed tickets from call center API, extracts Q&A pairs, saves to call_center_cases_raw.csv
+#used as a standalone script to collect training data from real support tickets
 
 #import libs
 import csv
@@ -17,15 +18,15 @@ from app.faktura_api.call_center_cleaner import clean_question, clean_answer, is
 #base dir
 BASE_DIR = Path(__file__).resolve().parents[2]
 
-#Domain
-
-
+#only fetch tickets with these statuses
 CLOSED_STATUS = "closed,resolved"
 OUTPUT_CSV = BASE_DIR / "data" / "learning" / "call_center_cases_raw.csv"
+#pause between api requests to avoid rate limiting
 REQUEST_PAUSE=0.4
 
 BASE_URL = f"{CALL_CENTER_DOMAIN.rstrip('/')}/api/v2"
 
+#csv field names for the raw output file
 RAW_FIELDNAMES = [
     "case_id",
     "ticket_id",
@@ -39,13 +40,16 @@ RAW_FIELDNAMES = [
     "status",
 ]
 
+#http basic auth using email and api key from config
 auth = HTTPBasicAuth(EMAIL, API_PARAM)
 
-#remove HTML tags
+#strips html tags from ticket post text, returns plain text
+#used in build_qa to clean post content
 def strip_html(html: str)-> str:
     return BeautifulSoup(html or "", "html.parser").get_text(separator=" ", strip=True)
 
-#universal get list of el from api response
+#extracts a list of items from an api response that may be a list, dict with data key, or nested
+#used in get_tickets and get_posts to normalize response shapes
 def extract_items(payload) -> list[dict]:
 
     if isinstance(payload, list):
@@ -69,7 +73,8 @@ def extract_items(payload) -> list[dict]:
     
     return []
 
-#get list ticket
+#fetches paginated ticket list from api filtered by closed status, returns raw json
+#used in save_callcenter_cases
 def get_tickets(page: int)->dict:
     params = {"page": page}
     if CLOSED_STATUS:
@@ -80,8 +85,8 @@ def get_tickets(page: int)->dict:
 
     return response.json()
 
-#get text from ticket
-
+#fetches all posts (messages) for a ticket by id, returns list of post dicts
+#used in build_qa to get the conversation thread
 def get_posts(ticket_id: int)-> list:
 
     response = requests.get(
@@ -96,7 +101,9 @@ def get_posts(ticket_id: int)-> list:
     return extract_items(response.json())
 
 
-#collect q/a
+#builds a Q&A dict from a ticket by separating client messages from agent replies
+#cleans and validates the pair, returns None if quality check fails
+#used in save_callcenter_cases
 def build_qa(ticket: dict) -> dict | None:
 
     ticket_id = ticket.get("id")
@@ -111,6 +118,7 @@ def build_qa(ticket: dict) -> dict | None:
     if not posts:
         return None
 
+    #sort posts chronologically by id
     posts.sort(key=lambda post: post.get("id", 0))
 
     questions = []
@@ -126,6 +134,7 @@ def build_qa(ticket: dict) -> dict | None:
         if not text:
             continue
 
+        #posts from the original user are questions; others are agent answers
         if post.get("user_id") == client_id:
             questions.append(text)
         else:
@@ -137,6 +146,7 @@ def build_qa(ticket: dict) -> dict | None:
     question = clean_question(raw_question)
     answer = clean_answer(raw_answer)
 
+    #discard pairs that are too short after cleaning
     if not is_quality_pair(question, answer):
         return None
     
@@ -153,7 +163,9 @@ def build_qa(ticket: dict) -> dict | None:
         "status": "raw",
     }
 
-#save real cases from call center in raw.csv
+#fetches all closed tickets page by page, builds Q&A pairs, writes them to call_center_cases_raw.csv
+#max_pages limits how many pages are fetched (None = all)
+#used as script entry point and by import pipeline
 def save_callcenter_cases(max_pages: int | None) -> None:
 
     OUTPUT_CSV.parent.mkdir(parents=True, exist_ok=True)
@@ -173,7 +185,7 @@ def save_callcenter_cases(max_pages: int | None) -> None:
 
             if qa:
                 rows.append(qa)
-                print(f"Ticket {qa["ticket_id"]}: {qa["question"][:60]}...")
+                print(f"Ticket {qa['ticket_id']}: {qa['question'][:60]}...")
 
             time.sleep(REQUEST_PAUSE)
 

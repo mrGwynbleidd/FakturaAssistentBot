@@ -1,11 +1,11 @@
-# Get accsess token from user
+#obtains and caches an OAuth2 bearer token from faktura account service
+#used by client.build_headers for all authenticated api requests
 
 #import libs
 import time
 import requests
 
-#import variables
-
+#import credentials from config
 from app.config import (
     FAKTURA_USERNAME,
     FAKTURA_PASSWORD,
@@ -14,16 +14,19 @@ from app.config import (
     FAKTURA_ACCOUNT_URL,
 )
 
+#module-level token cache — avoids requesting a new token on every api call
 _cached_token = None
 _token_expires_at = 0
 
 
-#get access token from api
-#use cache to not request one more time
+#returns a valid access token, using cached value if it has not expired
+#requests a new token from /token endpoint with password grant when cache is stale
+#used in client.build_headers
 def get_access_token() -> str:
 
     global _cached_token, _token_expires_at
 
+    #return cached token if still valid
     if _cached_token and time.time() < _token_expires_at:
         return _cached_token
     
@@ -65,27 +68,21 @@ def get_access_token() -> str:
             f"Status: {response.status_code}, Response: {response.text}"
         )
     
-    #get json response
+    #parse token response
     data = response.json()
 
-    #get access token
+    #extract token and expiry
     access_token = data.get("access_token")
-    #time when access token will disapear 168 hours
+    #token lifetime in seconds — default 3600, but typically 168 hours
     expires_in = data.get("expires_in", 3600)
 
-    #if access_token is empty
     if not access_token:
         raise RuntimeError(f"access_token not founded in response: {data}")
     
-    #save in cache access token
+    #store token in module cache
     _cached_token = access_token
 
-    #updata token
+    #subtract 60 seconds buffer to refresh slightly before actual expiry
     _token_expires_at = time.time() + int(expires_in) - 60
 
     return _cached_token
-
-
-
-
-

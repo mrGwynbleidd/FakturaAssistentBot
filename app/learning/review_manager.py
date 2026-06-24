@@ -1,4 +1,5 @@
-#Add correct answer
+#manages approved.csv — saves admin-approved Q&A pairs for RAG indexing
+#used by review_service when approving cases, and by import pipeline for bulk imports
 
 #import libs
 import csv
@@ -8,12 +9,12 @@ from datetime import datetime
 #base path
 BASE_DIR = Path(__file__).resolve().parents[2]
 
-#path where bad answer stored for now not used
+#path where pending review cases are stored (not used directly here)
 NEEDS_REVIEW_PATH = BASE_DIR / "data" / "learning" / "needs_review.csv"
-#path where correct answer will be saved
+#path where approved Q&A pairs are saved for RAG indexing
 APPROVED_CASES_PATH = BASE_DIR / "data" / "learning" / "approved.csv"
 
-#fieldnames for csv
+#csv column names for approved.csv
 APPROVED_FIELDNAMES = [
     "case_id",
     "datetime",
@@ -25,10 +26,9 @@ APPROVED_FIELDNAMES = [
     "source_id",
     "status",
     "notes",
-
 ]
 
-#clean text for csv
+#collapses whitespace and strips null bytes for safe csv storage, returns single space if empty
 def clean_text(value: str | None) -> str:
      
      if not value:
@@ -37,9 +37,9 @@ def clean_text(value: str | None) -> str:
      return " ".join(str(value).split())
 
 
-#check header csv
-#if header is wrong, recreate file
-
+#checks if approved.csv header matches expected fieldnames
+#if header is wrong, renames old file to backup and lets next write create fresh one
+#used in save_approved_case before every write
 def ensure_csv_header(path: Path, fieldnames: list[str]) -> None:
      
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -60,7 +60,9 @@ def ensure_csv_header(path: Path, fieldnames: list[str]) -> None:
          print(f"Old approved.csv header was wrong. Backup created: {backup_path}")
 
 
-#save approved cases, will use in ChromaDB
+#appends a single approved Q&A row to approved.csv
+#creates the file and writes header if it does not exist
+#used by review_service.save_to_approved_cases and import_callcenter_approved
 def save_approved_case(
           case_id: str,
           question: str,
@@ -104,9 +106,7 @@ def save_approved_case(
         writer.writerow(row)
        
 
-
-#Add approved answer manually
-#for test
+#manually approves a case by writing it directly to approved.csv, used for testing
 def approve_case_manually(
         case_id: str,
         question: str,
@@ -125,5 +125,3 @@ def approve_case_manually(
              source_id=case_id,
              status="approved",
         )
-
- 
