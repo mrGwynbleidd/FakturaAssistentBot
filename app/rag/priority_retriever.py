@@ -172,6 +172,43 @@ def _log_top(label: str, results: list[dict], n: int = 3) -> None:
         q = (r.get("metadata", {}) or {}).get("question", r.get("text", ""))[:60]
         log.info(f"  [{label}] #{i} score={score:.3f} sem={sem:.3f} lex={lex:.3f} type={src} | {q}")
 
+from app.rag.answer_adapter import adapt_answer
+
+# score above which we skip gemini adaptation and return the approved answer as-is
+_ADAPT_SKIP_THRESHOLD = 0.95
+
+def normalize(text: str) -> str:
+    return " ".join((text or "").lower().split())
+
+# decides whether to return the approved answer directly or adapt it with gemini
+# skips adaptation when: exact text match OR score is very high (>= _ADAPT_SKIP_THRESHOLD)
+# otherwise calls adapt_answer to trim irrelevant parts and rephrase for the current question
+def resolve_direct_answer(question: str, best: dict, language: str) -> str:
+    metadata = best.get("metadata", {}) or {}
+    approved_answer = metadata.get("answer", "")
+    approved_question = metadata.get("question", "")
+    score = float(best.get("score", 0))
+
+    # exact same question — no adaptation needed
+    if approved_question and normalize(question) == normalize(approved_question):
+        log.info(f"  ✏️  resolve_direct: точное совпадение вопросов — возвращаем напрямую")
+        return approved_answer
+
+    # very high confidence — question is semantically identical, skip gemini call
+    if score >= _ADAPT_SKIP_THRESHOLD:
+        log.info(f"  ✏️  resolve_direct: score={score:.3f} >= {_ADAPT_SKIP_THRESHOLD} — пропускаем адаптацию")
+        return approved_answer
+
+    # similar but not identical — adapt the answer to the actual question
+    log.info(f"  ✏️  resolve_direct: score={score:.3f} — запускаем адаптацию через Gemini")
+    return adapt_answer(
+        user_question=question,
+        approved_question=approved_question,
+        approved_answer=approved_answer,
+        pdf_context="",
+        language=language,
+    )
+
 
 #main retrieval function: approved → admin_knowledge → pdf
 #returns dict with mode, answer (for direct hits), context_text, and sources
@@ -191,7 +228,8 @@ def retrieve_priority_context(question: str, language: str = "ru") -> dict:
         log.info(f"  ✅ ПРЯМОЙ ОТВЕТ из approved (score={best['score']:.3f} >= {APPROVED_DIRECT_THRESHOLD})")
         return {
             "mode": "direct_approved",
-            "answer": best.get("metadata", {}).get("answer", ""),
+            #"answer": best.get("metadata", {}).get("answer", ""),
+            "answer": resolve_direct_answer(question,best, language),
             "context_text": format_context([best]),
             "sources": [make_source(best)],
             "approved_results": approved,
@@ -210,7 +248,8 @@ def retrieve_priority_context(question: str, language: str = "ru") -> dict:
         log.info(f"  ✅ ПРЯМОЙ ОТВЕТ из admin_knowledge (score={best['score']:.3f} >= {ADMIN_DIRECT_THRESHOLD})")
         return {
             "mode": "direct_admin_knowledge",
-            "answer": best.get("metadata", {}).get("answer", ""),
+            #"answer": best.get("metadata", {}).get("answer", ""),
+            "answer": resolve_direct_answer(question, best, language),
             "context_text": format_context([best]),
             "sources": [make_source(best)],
             "approved_results": approved,
