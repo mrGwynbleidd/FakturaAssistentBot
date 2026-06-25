@@ -1,7 +1,10 @@
+# keyboard for the read-only panel in admin chat
+# shows mode selector and back button
+# adding/removing chats is done via /readonly command in the group itself
 
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-
 from app.admin.texts import get_admin_text
+
 
 def read_only_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
     keyboard = [
@@ -15,21 +18,7 @@ def read_only_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
             KeyboardButton(text=get_admin_text("btn_read_only_off", language)),
         ],
         [
-            KeyboardButton(text=get_admin_text("btn_read_only_add_current_chat", language)),
-            KeyboardButton(text=get_admin_text("btn_read_only_remove_current_chat", language)),
-        ],
-        [
-            KeyboardButton(text=get_admin_text("btn_read_only_list_chats", language)),
-        ],
-        [
             KeyboardButton(text=get_admin_text("btn_back", language)),
         ],
     ]
-
-    return ReplyKeyboardMarkup(
-        keyboard=keyboard,
-        resize_keyboard=True,
-    )
-
-
-
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)

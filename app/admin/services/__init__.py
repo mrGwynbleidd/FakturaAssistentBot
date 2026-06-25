@@ -1,7 +1,5 @@
-
 from app.admin.services.admin_access import (
     is_admin,
-    get_admin_language,
     get_admin_language,
 )
 
@@ -35,19 +33,18 @@ from app.admin.services.stats_service import (
     format_stats_text,
 )
 
-from app.admin.services.read_only_service import(
-    get_read_only_mode,
+from app.admin.services.read_only_service import (
+    get_mode as get_read_only_mode,
     set_read_only_mode,
-    get_read_only_chat_ids,
+    get_chats as get_read_only_chat_ids,
     add_read_only_chat,
     remove_read_only_chat,
-    is_read_only_for_chat,
+    is_collecting_for_chat as is_read_only_for_chat,
     format_read_only_status,
 )
 
 __all__ = [
     "is_admin",
-    "get_admin_language",
     "get_admin_language",
     "save_admin_knowledge",
     "list_admin_knowledge",

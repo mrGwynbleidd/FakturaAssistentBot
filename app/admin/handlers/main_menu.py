@@ -3,7 +3,7 @@
 #used as entry point to the admin panel
 
 from aiogram import Router, F
-from aiogram.filters import Command
+from aiogram.filters import Command, Filter, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, ReplyKeyboardRemove
 
@@ -13,6 +13,7 @@ from app.admin.keyboards.main import admin_main_keyboard
 
 router = Router(name="admin_main_menu")
 
+
 #returns the button text in all three supported languages for filter matching
 def admin_button_values(key: str) -> list[str]:
     return [
@@ -20,6 +21,13 @@ def admin_button_values(key: str) -> list[str]:
         get_admin_text(key, "uz"),
         get_admin_text(key, "en"),
     ]
+
+
+#filter-level admin check — returns False for non-admins so message falls through to next router
+#using a Filter class instead of checking inside handler prevents message from being "swallowed"
+class IsAdminFilter(Filter):
+    async def __call__(self, message: Message) -> bool:
+        return is_admin(message.from_user.id if message.from_user else None)
 
 
 #sends the admin main menu, clears any active FSM state
@@ -53,25 +61,25 @@ async def admin_back_button(message: Message, state: FSMContext):
     await send_admin_menu(message, state)
 
 
-#universal cancel handler — catches cancel button in ANY FSM state including after restart
-#clears FSM state and shows main menu even if cancel was sent mid-flow
+#universal cancel for admins — catches cancel button in any FSM state including after restart
+#IsAdminFilter in the decorator ensures non-admins pass through to their own cancel handlers
+#StateFilter exclusion ensures admin cancel doesn't intercept user-level FSM flows (e.g. /sync)
 _CANCEL_BUTTON_TEXTS = admin_button_values("btn_cancel") + [
     "❌ Отменить",
 ]
 
-@router.message(F.text.in_(_CANCEL_BUTTON_TEXTS))
+from app.bot.sync_roaming_states import UserSyncRoamingStates
+
+@router.message(
+    F.text.in_(_CANCEL_BUTTON_TEXTS),
+    IsAdminFilter(),
+    ~StateFilter(
+        UserSyncRoamingStates.waiting_for_roaming_id,
+        UserSyncRoamingStates.waiting_for_inn,
+        UserSyncRoamingStates.waiting_for_model_type,
+    ),
+)
 async def admin_cancel_any_state(message: Message, state: FSMContext):
-    if not is_admin(message.from_user.id if message.from_user else None):
-        return
-
-    current_state = await state.get_state()
-    # Only handle if NOT already in a FSM state — FSM handlers manage their own cancel
-    if current_state is not None:
-        # Let the FSM state handler deal with it (return = don't consume)
-        # NOTE: we can't actually "pass through" in aiogram once filter matched,
-        # so we replicate the cancel behavior here universally
-        pass
-
     await state.clear()
     language = get_admin_language(message.from_user.id if message.from_user else None)
     await message.answer(
@@ -85,14 +93,10 @@ _EXIT_BUTTON_TEXTS = admin_button_values("btn_exit") + [
     "\U0001f6aa Выйти из панели",
 ]
 
-@router.message(F.text.in_(_EXIT_BUTTON_TEXTS))
+@router.message(F.text.in_(_EXIT_BUTTON_TEXTS), IsAdminFilter())
 async def admin_exit_button(message: Message, state: FSMContext):
-    if not is_admin(message.from_user.id if message.from_user else None):
-        return
-
     await state.clear()
     language = get_admin_language(message.from_user.id if message.from_user else None)
-
     await message.answer(
         get_admin_text("operation_cancelled", language),
         reply_markup=ReplyKeyboardRemove(),
@@ -100,13 +104,9 @@ async def admin_exit_button(message: Message, state: FSMContext):
 
 
 #settings button handler — placeholder that shows admin menu with description
-@router.message(F.text.in_(admin_button_values("btn_settings")))
+@router.message(F.text.in_(admin_button_values("btn_settings")), IsAdminFilter())
 async def admin_settings_button(message: Message):
-    if not is_admin(message.from_user.id if message.from_user else None):
-        return
-
     language = get_admin_language(message.from_user.id if message.from_user else None)
-
     await message.answer(
         get_admin_text("admin_menu_title", language) + "\n\n"
         "Q/A, временные проблемы, review cases и статистика",
