@@ -1,21 +1,23 @@
-"""
-Group chat handlers — runs only in group / supergroup chats.
-
-What this does:
-  1. User sends a photo (with optional caption) → saves file + logs question in group_qa.csv
-  2. User sends text → logs question in group_qa.csv
-  3. Admin replies to a logged message → links answer to original question
-     and pushes it into the approved-answers learning pipeline
-
-How admins are identified:
-  - data/group_admins_usernames.txt  ← list of Telegram usernames (one per line)
-  - Messages from users NOT in that list are treated as regular user messages
-"""
+# group chat handlers — collects questions and photos from monitored telegram groups
+# does NOT send AI answers; it only saves data for admin review and learning pipeline
+#
+# how groups are registered:
+#   group admin sends /readonly in the group -> bot adds it to the monitored list
+#   /readonly again in the same group -> removes it (toggle)
+#
+# message flow:
+#   user text   -> saved to group_qa.csv as "pending"
+#   user photo  -> file saved to disk + logged in group_photos.csv + group_qa.csv
+#   admin reply -> linked to original question, pushed to approved.csv learning pipeline
+#
+# IsCollectingGroup filter gates all handlers at filter level (not inside handler)
+# so messages from non-monitored groups fall through to user_router
 
 import logging
 from pathlib import Path
 
 from aiogram import Router, F
+from aiogram.filters import Command, Filter
 from aiogram.types import Message
 from aiogram.enums import ChatType
 
@@ -25,23 +27,30 @@ from app.logs.group_qa_logger import (
     load_pending_question,
     save_admin_answer,
 )
+from app.admin.services.read_only_service import (
+    is_collecting_for_chat,
+    add_read_only_chat,
+    remove_read_only_chat,
+    get_chats,
+)
 
 log = logging.getLogger("bot")
 
-# ── router filtered to group chats only ───────────────────────────────────────
+# router is restricted to group and supergroup chats only
 group_router = Router()
 group_router.message.filter(F.chat.type.in_({ChatType.GROUP, ChatType.SUPERGROUP}))
 
-# ── load admin usernames ───────────────────────────────────────────────────────
+# ---- admin username list -------------------------------------------------------
+
 BASE_DIR = Path(__file__).resolve().parents[2]
 ADMINS_FILE = BASE_DIR / "data" / "group_admins_usernames.txt"
 
 
-def _load_admin_usernames() -> set[str]:
-    """Read data/group_admins_usernames.txt → set of lowercase usernames (no @)."""
+def _load_admin_usernames() -> set:
+    # reads group_admins_usernames.txt, returns lowercase set without @ prefix
     if not ADMINS_FILE.exists():
         return set()
-    usernames: set[str] = set()
+    usernames = set()
     with open(ADMINS_FILE, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -51,44 +60,84 @@ def _load_admin_usernames() -> set[str]:
     return usernames
 
 
-def _is_admin(username: str | None) -> bool:
+def _is_group_admin(username):
     if not username:
         return False
-    admins = _load_admin_usernames()
-    return username.lower() in admins
+    return username.lower() in _load_admin_usernames()
 
 
-# ── helpers ────────────────────────────────────────────────────────────────────
+# ---- filter: only process messages from monitored (read-only) groups ----------
+# moving the gate here (not inside handler) ensures non-monitored groups
+# pass all messages through to user_router instead of silently consuming them
+
+class IsCollectingGroup(Filter):
+    async def __call__(self, message: Message) -> bool:
+        return is_collecting_for_chat(message.chat.id)
+
+
+# ---- helpers ------------------------------------------------------------------
 
 def _chat_title(msg: Message) -> str:
     return msg.chat.title or str(msg.chat.id)
 
 
 def _username(msg: Message) -> str:
-    return msg.from_user.username or ""
+    if msg.from_user and msg.from_user.username:
+        return msg.from_user.username
+    return ""
 
 
-def _full_name(msg: Message) -> str:
-    u = msg.from_user
-    return (f"{u.first_name or ''} {u.last_name or ''}").strip()
+# ---- /readonly command: toggle this group in the monitored list ---------------
 
-
-# ── photo handler ──────────────────────────────────────────────────────────────
-
-@group_router.message(F.photo)
-async def group_photo_handler(message: Message) -> None:
-    """Save photo file and log as a pending group question."""
+@group_router.message(Command("readonly"))
+async def toggle_readonly(message: Message) -> None:
+    # only group admins (from group_admins_usernames.txt) can toggle
     username = _username(message)
-
-    # Photos from admins are skipped (they're usually illustrative, not questions)
-    if _is_admin(username):
+    if not _is_group_admin(username):
         return
 
-    # Save the actual file (existing logic)
+    chat_id = message.chat.id
+    title = _chat_title(message)
+    chat_username = message.chat.username or ""
+
+    current_chats = get_chats()
+    already_monitored = str(chat_id) in current_chats
+
+    if already_monitored:
+        remove_read_only_chat(chat_id=chat_id, admin_id=message.from_user.id)
+        await message.answer(
+            "Stop Read-only for this group.\n"
+            "Bot will no longer collect messages from this group."
+        )
+        log.info("Read-only OFF: %s (%s) by @%s", title, chat_id, username)
+    else:
+        add_read_only_chat(
+            chat_id=chat_id,
+            title=title,
+            username=chat_username,
+            admin_id=message.from_user.id,
+        )
+        await message.answer(
+            "Read-only enabled for this group.\n"
+            "Bot will silently collect questions from this group."
+        )
+        log.info("Read-only ON: %s (%s) by @%s", title, chat_id, username)
+
+
+# ---- photo handler ------------------------------------------------------------
+
+@group_router.message(F.photo, IsCollectingGroup())
+async def group_photo_handler(message: Message) -> None:
+    username = _username(message)
+
+    # photos from group admins are skipped (usually illustrative, not questions)
+    if _is_group_admin(username):
+        return
+
     saved_path = await save_group_photo(message)
 
     caption = (message.caption or "").strip()
-    question_text = caption if caption else "[фото без подписи]"
+    question_text = caption if caption else "[photo without caption]"
 
     save_group_question(
         chat_id=message.chat.id,
@@ -102,31 +151,26 @@ async def group_photo_handler(message: Message) -> None:
     )
 
 
-# ── text message handler ───────────────────────────────────────────────────────
+# ---- text handler -------------------------------------------------------------
+# ~F.text.startswith("/") excludes commands so they reach user_router handlers
+# IsCollectingGroup() ensures only monitored groups are collected from
 
-@group_router.message(F.text)
+@group_router.message(F.text & ~F.text.startswith("/"), IsCollectingGroup())
 async def group_text_handler(message: Message) -> None:
-    """
-    Two cases:
-    a) Admin replies to a logged user message  → capture as approved answer
-    b) Regular user text (or non-reply admin)  → log as pending question
-    """
     username = _username(message)
     text = (message.text or "").strip()
 
     if not text:
         return
 
-    # ── Case (a): admin reply ─────────────────────────────────────────────────
-    if _is_admin(username) and message.reply_to_message is not None:
-        original = message.reply_to_message
-        original_msg_id = original.message_id
-
+    # case a: group admin replies to a logged message -> capture as approved answer
+    if _is_group_admin(username) and message.reply_to_message is not None:
+        original_msg_id = message.reply_to_message.message_id
         pending = load_pending_question(message.chat.id, original_msg_id)
 
         if pending is not None:
             question_text = pending.get("question_text", "").strip() or (
-                original.text or original.caption or ""
+                message.reply_to_message.text or message.reply_to_message.caption or ""
             ).strip()
 
             save_admin_answer(
@@ -137,18 +181,16 @@ async def group_text_handler(message: Message) -> None:
                 admin_answer=text,
                 question_text=question_text,
             )
-            log.info(
-                f"✅ Группа: @{username} ответил на вопрос msg_id={original_msg_id}"
-            )
+            log.info("Group: @%s answered question msg_id=%s", username, original_msg_id)
         else:
             log.debug(
-                f"Группа: @{username} ответил на сообщение {original_msg_id}, "
-                "но вопрос не найден в кэше — пропускаем"
+                "Group: @%s replied to msg_id=%s but not found in cache",
+                username, original_msg_id,
             )
-        return  # don't log the admin reply as a question
+        return  # admin reply is not logged as a user question
 
-    # ── Case (b): regular user text (or admin non-reply) ─────────────────────
-    if not _is_admin(username):
+    # case b: regular user message -> log as pending question
+    if not _is_group_admin(username):
         save_group_question(
             chat_id=message.chat.id,
             chat_title=_chat_title(message),
