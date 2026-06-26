@@ -74,11 +74,11 @@ def validate_inn(inn: str) -> str:
         raise ValueError("ИНН / ПИНФЛ должен содержать только цифры.")
     if len(inn) == 9:
         return inn
-    if len(inn) == 16:
+    if len(inn) == 14:
         return inn
     raise ValueError(
         f"Неверная длина: получено {len(inn)} цифр.\n"
-        "ИНН юрлица — 9 цифр, ПИНФЛ физлица — 16 цифр.\n"
+        "ИНН юрлица — 9 цифр, ПИНФЛ физлица — 14 цифр.\n"
         "Примеры: `205126427` или `12345678901234`"
     )
 
