@@ -25,7 +25,11 @@ def _btn(key: str) -> list[str]:
         "btn_read_only": ["🔐 Read-only режим", "readonly", "read_only"],
         "btn_read_only_all": ["1️⃣ Read-only везде", "all"],
         "btn_read_only_selected": ["2️⃣ Read-only в выбранных чатах", "selected"],
-        "btn_read_only_off": ["3️⃣ Выключить сбор", "off"],
+        "btn_read_only_off": ["3️⃣ Выключить сбор", "3️⃣ Read-only отключить", "off"],
+        # legacy buttons from old keyboard — redirect to the status panel
+        "btn_read_only_list_chats": ["📋 Список read-only чатов", "list_read_only_chats"],
+        "btn_read_only_add_current_chat": ["➕ Добавить текущий чат", "add_current_chat"],
+        "btn_read_only_remove_current_chat": ["➖ Удалить текущий чат", "remove_current_chat"],
     }
     values.extend(aliases.get(key, []))
     return list(set(values))
@@ -44,8 +48,12 @@ async def _send_menu(message: Message) -> None:
 
 
 # opens read-only panel from main menu button or /readonly command in private chat
+# also handles legacy cached buttons (list, add, remove) — they all just show the panel
 @router.message(Command("readonly"))
 @router.message(F.text.in_(_btn("btn_read_only")))
+@router.message(F.text.in_(_btn("btn_read_only_list_chats")))
+@router.message(F.text.in_(_btn("btn_read_only_add_current_chat")))
+@router.message(F.text.in_(_btn("btn_read_only_remove_current_chat")))
 async def read_only_menu(message: Message) -> None:
     await _send_menu(message)
 
