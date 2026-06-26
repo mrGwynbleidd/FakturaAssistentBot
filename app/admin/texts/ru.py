@@ -1,7 +1,12 @@
 ADMIN_TEXTS_RU = {
     "access_denied": "⛔ У вас нет доступа к админ-панели.",
 
-    "admin_menu_title": "🛠 Админ-панель",
+    "admin_menu_title": "🛠 Админ-панель\n"
+    "Комманды доступные для админа:\n"
+    "/admin - Открыть панель админа\n"
+    "/review - Кейсы на проверку\n"
+    "/readonly - Настройки сбора из групп\n"
+    "/admin_stats - Статистика бота\n",
     "admin_menu_description": "Выберите действие:",
 
     "btn_add_qa": "➕ Добавить Q/A",

@@ -12,6 +12,8 @@ BASE_DIR = Path(__file__).resolve().parents[3]
 
 NEEDS_REVIEW_PATH = BASE_DIR / "data" / "learning" / "needs_review.csv"
 
+text = "This text was created in another branch"
+
 #csv column names for needs_review.csv
 NEEDS_REVIEW_FIELDNAMES = [
     "case_id",

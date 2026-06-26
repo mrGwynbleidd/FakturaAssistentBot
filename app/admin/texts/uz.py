@@ -1,7 +1,12 @@
 ADMIN_TEXTS_UZ = {
 
     # Main menu
-    "admin_menu_title": "Admin panel",
+    "admin_menu_title": "🛠 Admin Panel\n"
+    "Commands available to the admin:\n"
+    "/admin - Open the admin panel\n"
+    "/review - Cases pending review\n"
+    "/readonly - Group collection settings\n"
+    "/admin_stats - Bot statistics\n",
     "admin_menu_description": "Amalni tanlang:",
     "access_denied": "Sizda admin panelga kirish huquqi yo‘q.",
     "unknown_command": "Noma’lum admin buyrug‘i.",

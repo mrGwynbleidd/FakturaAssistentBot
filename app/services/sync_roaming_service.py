@@ -67,7 +67,7 @@ def validate_roaming_id(roaming_id: str) -> str:
     return roaming_id.lower()
 
 
-# accepts 9-digit INN (company) or 16-digit PINFL (individual)
+# accepts 9-digit INN (company) or 14-digit PINFL (individual)
 def validate_inn(inn: str) -> str:
     inn = str(inn or "").strip()
     if not inn.isdigit():

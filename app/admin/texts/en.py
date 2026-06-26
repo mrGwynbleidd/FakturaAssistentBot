@@ -1,7 +1,12 @@
 ADMIN_TEXTS_EN = {
 
     #main menu
-    "admin_menu_title": "Admin-Panel",
+    "admin_menu_title": "🛠 Admin Panel\n"
+    "Commands available to the admin:\n"
+    "/admin - Open the admin panel\n"
+    "/review - Cases pending review\n"
+    "/readonly - Group collection settings\n"
+    "/admin_stats - Bot statistics\n",
     "admin_menu_decription": "Choose an action",
     "access_denied": "You do not have access to admin panel",
     "unknown_command": "Unknown admin command",
