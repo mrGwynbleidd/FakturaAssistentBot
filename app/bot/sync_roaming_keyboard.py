@@ -2,7 +2,7 @@
 from app.services.sync_roaming_service import MODEL_TYPES
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-SYNC_DOCUMENT_BUTTON_TEXT = "🔄 Синхронизация документа"
+SYNC_DOCUMENT_BUTTON_TEXT = "🔁 Синхронизация документа"
 CANCEL_BUTTON_TEXT = "❌ Отмена"
 
 def sync_start_keyboard() -> ReplyKeyboardMarkup:
@@ -31,7 +31,7 @@ def sync_model_type_keyboard() -> ReplyKeyboardMarkup:
     for model_type, title in MODEL_TYPES.items():
         rows.append(
             [
-                KeyboardButton(text=f"{title} = {model_type}")
+                KeyboardButton(text=f"{title}")
             ]
         )
 
