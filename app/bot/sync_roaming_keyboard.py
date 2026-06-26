@@ -3,7 +3,7 @@ from app.services.sync_roaming_service import MODEL_TYPES
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 SYNC_DOCUMENT_BUTTON_TEXT = "🔁 Синхронизация документа"
-CANCEL_BUTTON_TEXT = "❌ Отмена"
+CANCEL_BUTTON_TEXT = "❌ Отмена действия"
 
 def sync_start_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
