@@ -53,20 +53,34 @@ class SyncRoamingResult:
 
 # ── Validation ────────────────────────────────────────────────────────────────
 
+# roaming id is a MongoDB ObjectId — exactly 24 lowercase hex characters
 def validate_roaming_id(roaming_id: str) -> str:
     roaming_id = str(roaming_id or "").strip()
     if not roaming_id:
-        raise ValueError("Roaming ID документа не указан")
-    if not re.fullmatch(r"[A-Za-z0-9._:\-]{5,120}", roaming_id):
-        raise ValueError("Roaming ID должен содержать только буквы, цифры и символы . _ : -")
-    return roaming_id
+        raise ValueError("Roaming ID не указан.")
+    if not re.fullmatch(r"[a-fA-F0-9]{24}", roaming_id):
+        raise ValueError(
+            f"Неверный Roaming ID: получено {len(roaming_id)} символов.\n"
+            "Roaming ID должен содержать ровно 24 шестнадцатеричных символа.\n"
+            "Пример: `691c6a9e2456ead059405099`"
+        )
+    return roaming_id.lower()
 
 
+# accepts 9-digit INN (company) or 16-digit PINFL (individual)
 def validate_inn(inn: str) -> str:
     inn = str(inn or "").strip()
-    if not re.fullmatch(r"\d{9}", inn):
-        raise ValueError("ИНН должен состоять ровно из 9 цифр")
-    return inn
+    if not inn.isdigit():
+        raise ValueError("ИНН / ПИНФЛ должен содержать только цифры.")
+    if len(inn) == 9:
+        return inn
+    if len(inn) == 16:
+        return inn
+    raise ValueError(
+        f"Неверная длина: получено {len(inn)} цифр.\n"
+        "ИНН юрлица — 9 цифр, ПИНФЛ физлица — 16 цифр.\n"
+        "Примеры: `205126427` или `12345678901234`"
+    )
 
 
 def validate_model_type(model_type: int | str) -> int:
@@ -241,7 +255,7 @@ def format_sync_result(model_type: int, result: SyncRoamingResult) -> str:
             raw = raw[:1200] + "\n..."
         lines.append(f"\nОтвет API:\n{raw}")
 
-    lines.append(f"\n(contractorType={result.contractor_type} — {result.contractor_name})")
+    #lines.append(f"\n(contractorType={result.contractor_type} — {result.contractor_name})")
     return "\n".join(lines)
 
 
