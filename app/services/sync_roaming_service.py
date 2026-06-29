@@ -58,11 +58,10 @@ def validate_roaming_id(roaming_id: str) -> str:
     if not roaming_id:
         raise ValueError("Roaming ID не указан.")
     if not re.fullmatch(r"[a-fA-F0-9]{24}", roaming_id):
-        n = len(roaming_id)
         raise ValueError(
-            f"Неверный Roaming ID: получено {n} символов. "
-            "Roaming ID должен содержать ровно 24 шестнадцатеричных символа. "
-            "Пример: 691c6a9e2456ead059405099"
+            f"Неверный Roaming ID: получено {len(roaming_id)} символов.\n"
+            "Roaming ID должен содержать ровно 24 шестнадцатеричных символа.\n"
+            "Пример: `691c6a9e2456ead059405099`"
         )
     return roaming_id.lower()
 

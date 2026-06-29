@@ -78,7 +78,8 @@ async def step_roaming_id(message: Message, state: FSMContext):
     await state.update_data(roaming_id=roaming_id)
     await state.set_state(UserSyncRoamingStates.waiting_for_inn)
     await message.answer(
-        "Шаг 2/3 — Введите ИНН организации (9 цифр) или ПИНФЛ физлица (14 цифр).\n\nПример ИНН: `205126427` или ПИНФЛ: 12345678901234",
+        "Шаг 2/3 — Введите ИНН организации (9 цифр) или ПИНФЛ физлица (14 цифр).\n\n"
+        "Примеры: `205126427` или `12345678901234`",
         reply_markup=sync_cancel_keyboard(),
         parse_mode="Markdown",
     )
