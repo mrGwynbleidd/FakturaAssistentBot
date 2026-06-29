@@ -87,7 +87,7 @@ COLUMN_ALIASES = {
         "mavzu",
     ],
 
-    "staus": [
+    "status": [
         "status",
         "state",
         "result",

@@ -56,17 +56,31 @@ class SyncRoamingResult:
 def validate_roaming_id(roaming_id: str) -> str:
     roaming_id = str(roaming_id or "").strip()
     if not roaming_id:
-        raise ValueError("Roaming ID документа не указан")
-    if not re.fullmatch(r"[A-Za-z0-9._:\-]{5,120}", roaming_id):
-        raise ValueError("Roaming ID должен содержать только буквы, цифры и символы . _ : -")
-    return roaming_id
+        raise ValueError("Roaming ID не указан.")
+    if not re.fullmatch(r"[a-fA-F0-9]{24}", roaming_id):
+        n = len(roaming_id)
+        raise ValueError(
+            f"Неверный Roaming ID: получено {n} символов. "
+            "Roaming ID должен содержать ровно 24 шестнадцатеричных символа. "
+            "Пример: 691c6a9e2456ead059405099"
+        )
+    return roaming_id.lower()
 
 
 def validate_inn(inn: str) -> str:
     inn = str(inn or "").strip()
-    if not re.fullmatch(r"\d{9}", inn):
-        raise ValueError("ИНН должен состоять ровно из 9 цифр")
-    return inn
+    if not inn.isdigit():
+        raise ValueError("ИНН / ПИНФЛ должен содержать только цифры.")
+    if len(inn) == 9:
+        return inn
+    if len(inn) == 14:
+        return inn
+    n = len(inn)
+    raise ValueError(
+        f"Неверная длина: получено {n} цифр. "
+        "ИНН юрлица — 9 цифр, ПИНФЛ физлица — 14 цифр."
+    )
+
 
 
 def validate_model_type(model_type: int | str) -> int:
