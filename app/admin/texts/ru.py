@@ -14,6 +14,8 @@ ADMIN_TEXTS_RU = {
     "btn_back": "⬅️ Назад",
     "btn_cancel": "❌ Отмена",
     "btn_confirm": "✅ Подтвердить",
+    "btn_reject": "❌ Отклонить",
+    "btn_skip": "⏭ Пропустить",
 
     "btn_read_only": "🔐 Read-only режим",
     "btn_read_only_all": "1️⃣ Read-only везде",

@@ -17,7 +17,7 @@ from app.admin.keyboards.incidents import (
 )
 
 from app.admin.keyboards.review import (
-    review_action_keyboard,
+    review_case_keyboard,
     review_after_action_keyboard,
 )
 
@@ -32,7 +32,7 @@ __all__ = [
     "incident_match_mode_keyboard",
     "incident_manage_keyboard",
     "incident_after_save_keyboard",
-    "review_action_keyboard",
+    "review_case_keyboard",
     "review_after_action_keyboard",
     "read_only_keyboard",
 ]
