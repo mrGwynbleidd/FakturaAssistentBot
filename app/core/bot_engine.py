@@ -17,6 +17,8 @@ from app.rag.api_generator import generate_api_answer
 
 from app.core.emergency_answer_checker import check_active_incidents
 
+from app.core.answer_mode_logger import log_answer_mode
+
 #minimum score distance above which a source is considered weak and sent to review
 REVIEW_DISTANCE_THRESHOLD = 1.25
 
@@ -120,6 +122,16 @@ def process_user_question(
     if incident_result:
         log.info(f"  🚨 ИНЦИДЕНТ совпал: {incident_result.get('incident_title','')!r}")
         log.info(f"  → Ответ из инцидента, без RAG и Gemini")
+        try:
+            log_answer_mode(
+                mode="incident",
+                question=question,
+                answer=incident_result["answer"],
+                source_type="incident",
+                notes=incident_result.get("incident_title", ""),
+            )
+        except Exception:
+            pass
         return {
             "answer": incident_result["answer"],
             "sources": incident_result["sources"],
@@ -143,12 +155,53 @@ def process_user_question(
     rag_mode = rag_result.get("mode", "?")
     log.info(f"  RAG режим: {rag_mode}")
 
+    # if rag_result.get("mode") == "direct_approved":
+    #     answer = rag_result.get("answer", "")
+
+    #     log_answer_mode(
+    #         mode="direct_approved",
+    #         source_type="approved",
+    #         source_id=rag_result.get("source_id", "") or rag_result.get("case_id", ""),
+    #         score=rag_result.get("score", ""),
+    #         question=question,
+    #         answer=answer,
+    #         matched_question=rag_result.get("matched_question", ""),
+    #         notes="approved answer used before Gemini/PDF",
+    #     )
+
+    #     return answer
+    
+    # if rag_result.get("mode") == "approved_candidate_not_direct":
+    #     log_answer_mode(
+    #         mode="approved_candidate_not_direct",
+    #         source_type="approved",
+    #         source_id=rag_result.get("source_id", "") or rag_result.get("case_id", ""),
+    #         score=rag_result.get("score", ""),
+    #         question=question,
+    #         answer=rag_result.get("answer", "") or rag_result.get("candidate_answer", ""),
+    #         matched_question=rag_result.get("matched_question", ""),
+    #         notes="approved candidate found but score is below direct threshold",
+    #     )
+
     #if a direct high-confidence match is found, return without calling Gemini
     if rag_mode in {"direct_approved", "direct_admin_knowledge"}:
         answer = rag_result.get("answer", "")
         src = rag_result.get("sources", [])
         log.info(f"  ✅ ПРЯМОЙ ОТВЕТ из базы знаний — Gemini не нужен")
         log.info(f"  → Длина ответа: {len(answer)} символов")
+        try:
+            top = src[0] if src else {}
+            log_answer_mode(
+                mode=rag_mode,
+                question=question,
+                answer=answer,
+                source_type=top.get("source_type", ""),
+                source_id=str(top.get("source_id", "") or top.get("id", "")),
+                score=top.get("score", ""),
+                matched_question=str(top.get("question", "") or top.get("matched_question", "")),
+            )
+        except Exception:
+            pass
         return {
             "answer": answer,
             "sources": src,
@@ -215,7 +268,17 @@ def process_user_question(
             )
         if save_to_csv:
             save_qa(question=question, answer=error_answer, language=language, sources=sources)
+        
+        # log_answer_mode(
+        #     mode="pdf_rag_or_llm",
+        #     source_type="pdf_or_llm",
+        #     question=question,
+        #     answer=answer,
+        #     notes="approved direct answer was not used"
+        # )
+        
         return {
+
             "success": False, "language": language, "question": question,
             "answer": error_answer, "sources": sources, "context": context,
             "sent_to_review": True, "review_case_id": review_case_id,
@@ -253,6 +316,20 @@ def process_user_question(
             log.warning(f"  ⚠️  Review case save error: {error}")
 
     log.info(f"✅ ОТВЕТ ОТПРАВЛЕН | на_проверке={sent_to_review} | причина={review_reason or 'ok'}")
+
+    try:
+        top = sources[0] if sources else {}
+        log_answer_mode(
+            mode="api" if is_api_request else "llm_context",
+            question=question,
+            answer=answer,
+            source_type=top.get("source_type", ""),
+            source_id=str(top.get("source_id", "") or top.get("id", "")),
+            score=top.get("score", ""),
+            notes=f"sent_to_review={sent_to_review} reason={review_reason or 'ok'}",
+        )
+    except Exception:
+        pass
 
     return {
         "success": True,

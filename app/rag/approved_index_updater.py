@@ -79,7 +79,7 @@ def rebuild_approved_index() -> int:
     if not docs:
         return 0
     
-    texts = [doc["id"] for doc in docs]
+    texts = [doc["text"] for doc in docs]
     collection.add(
         ids=[doc["id"] for doc in docs],
         documents=texts,
