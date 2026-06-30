@@ -13,6 +13,7 @@ from app.admin.handlers.incidents_manage import router as incidents_manage_route
 from app.admin.handlers.review_cases import router as review_cases_router
 from app.admin.handlers.stats import router as stats_router
 from app.admin.handlers.read_only import router as read_only_router
+from app.admin.handlers.settings import router as settings_router
 
 
 admin_router = Router(name="admin_router")
@@ -23,6 +24,7 @@ admin_router = Router(name="admin_router")
 admin_router.include_router(main_menu_router)
 admin_router.include_router(stats_router)          #before FSM routers
 admin_router.include_router(review_cases_router)   #view handler before FSM handlers
+admin_router.include_router(settings_router)       #button handler before FSM handlers
 admin_router.include_router(knowledge_create_router)
 admin_router.include_router(incidents_create_router)
 admin_router.include_router(incidents_manage_router)

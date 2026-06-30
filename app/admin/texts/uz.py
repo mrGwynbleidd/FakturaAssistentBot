@@ -64,5 +64,21 @@ ADMIN_TEXTS_UZ = {
     "operation_cancelled": "Amal bekor qilindi.",
     "error_occurred": "Xatolik yuz berdi. Loglarni tekshiring.",
 
-
+    # Settings / Admin management
+    "settings_title": "⚙️ Sozlamalar",
+    "btn_list_admins": "👥 Adminlar ro'yxati",
+    "btn_add_admin": "➕ Admin qo'shish",
+    "btn_remove_admin": "➖ Adminni o'chirish",
+    "admin_list_title": "👥 Joriy adminlar:",
+    "admin_list_empty": "Fayldagi adminlar yo'q. ADMIN_IDS konfigni tekshiring.",
+    "enter_admin_id": "Yangi adminning Telegram ID'sini kiriting (faqat raqamlar).\n\nID ni bilish uchun @userinfobot ga Telegramda yozing.",
+    "admin_added": "✅ Admin qo'shildi.",
+    "admin_already_exists": "⚠️ Bu foydalanuvchi allaqachon admin.",
+    "enter_remove_admin_id": "O'chirmoqchi bo'lgan adminning Telegram ID'sini kiriting:",
+    "admin_removed": "✅ Admin o'chirildi.",
+    "admin_not_found": "❌ Bu Telegram ID faylda topilmadi.",
+    "admin_env_warning": "⚠️ ADMIN_IDS (config/env) dan olingan adminlarni bot orqali o'chirib bo'lmaydi.",
+    "invalid_admin_id": "❌ Noto'g'ri format. Raqamli Telegram ID kiriting.",
+    "btn_manage_admins": "👥 Adminlarni boshqarish",
+    "self_remove_error": "❌ O'zingizni admin ro'yxatidan o'chirib bo'lmaydi.",
 }

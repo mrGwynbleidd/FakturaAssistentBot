@@ -20,6 +20,9 @@ def admin_main_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
             KeyboardButton(text=get_admin_text("btn_settings", language)),
         ],
         [
+            KeyboardButton(text=get_admin_text("btn_manage_admins", language)),
+        ],
+        [
             KeyboardButton(text=get_admin_text("btn_exit", language)),
         ],
     ]
@@ -28,7 +31,6 @@ def admin_main_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
         keyboard=keyboard,
         resize_keyboard=True,
     )
-
 
 
 def admin_cancel_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
@@ -45,7 +47,7 @@ def admin_cancel_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
     )
 
 def admin_confirm_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
-    
+
     keyboard = [
         [
             KeyboardButton(text=get_admin_text("btn_confirm", language)),
@@ -57,6 +59,3 @@ def admin_confirm_keyboard(language: str = "ru") -> ReplyKeyboardMarkup:
         keyboard=keyboard,
         resize_keyboard=True,
     )
-
-
-

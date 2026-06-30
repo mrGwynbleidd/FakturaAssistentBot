@@ -22,6 +22,7 @@ from app.admin.keyboards.review import (
 )
 
 from app.admin.keyboards.read_only import read_only_keyboard
+from app.admin.keyboards.settings import settings_keyboard
 
 __all__ = [
     "admin_main_keyboard",
@@ -35,4 +36,5 @@ __all__ = [
     "review_case_keyboard",
     "review_after_action_keyboard",
     "read_only_keyboard",
+    "settings_keyboard",
 ]

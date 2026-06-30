@@ -10,6 +10,7 @@ ADMIN_TEXTS_RU = {
     "btn_review_cases": "🧠 Review cases",
     "btn_stats": "📊 Статистика",
     "btn_settings": "⚙️ Настройки",
+    "btn_manage_admins": "👥 Управление админами",
     "btn_exit": "🚪 Выйти",
     "btn_back": "⬅️ Назад",
     "btn_cancel": "❌ Отмена",
@@ -57,13 +58,6 @@ ADMIN_TEXTS_RU = {
 
     "operation_cancelled": "Операция отменена.",
 
-    "btn_read_only": "🔐 Read-only режим",
-    "btn_read_only_all": "1️⃣ Read-only везде",
-    "btn_read_only_selected": "2️⃣ Read-only в выбранных чатах",
-    "btn_read_only_off": "3️⃣ Read-only отключить",
-    "btn_read_only_add_current_chat": "➕ Добавить текущий чат",
-    "btn_read_only_remove_current_chat": "➖ Удалить текущий чат",
-    "btn_read_only_list_chats": "📋 Список read-only чатов",
     "readonly_enabled_all": "Read-only режим включён везде. Бот не будет отвечать ни в одном чате.",
     "readonly_enabled_selected": "Read-only режим включён только для выбранных чатов.",
     "readonly_disabled": "Read-only режим отключён. Бот снова может отвечать.",
@@ -71,4 +65,20 @@ ADMIN_TEXTS_RU = {
     "readonly_chat_removed": "Текущий чат удалён из read-only списка.",
     "readonly_chat_not_found": "Текущего чата нет в read-only списке.",
 
+    # Settings / Admin management
+    "settings_title": "⚙️ Настройки",
+    "btn_list_admins": "👥 Список админов",
+    "btn_add_admin": "➕ Добавить админа",
+    "btn_remove_admin": "➖ Удалить админа",
+    "admin_list_title": "👥 Текущие админы:",
+    "admin_list_empty": "Список файловых админов пуст. Проверьте ADMIN_IDS в конфиге.",
+    "enter_admin_id": "Введите Telegram ID нового админа (только цифры).\n\nЧтобы узнать ID, попросите пользователя написать @userinfobot в Telegram.",
+    "admin_added": "✅ Админ добавлен.",
+    "admin_already_exists": "⚠️ Этот пользователь уже является админом.",
+    "enter_remove_admin_id": "Введите Telegram ID админа для удаления:",
+    "admin_removed": "✅ Админ удалён.",
+    "admin_not_found": "❌ Такой Telegram ID не найден в файле.",
+    "admin_env_warning": "⚠️ Админы из ADMIN_IDS (конфиг/env) нельзя удалить через бота.",
+    "invalid_admin_id": "❌ Неверный формат. Введите числовой Telegram ID.",
+    "self_remove_error": "❌ Нельзя удалить самого себя из списка.",
 }

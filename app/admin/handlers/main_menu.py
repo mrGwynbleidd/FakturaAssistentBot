@@ -10,6 +10,8 @@ from aiogram.types import Message, ReplyKeyboardRemove
 from app.admin.services.admin_access import is_admin, get_admin_language
 from app.admin.texts import get_admin_text
 from app.admin.keyboards.main import admin_main_keyboard
+from app.admin.keyboards.settings import settings_keyboard
+from app.admin.states.settings_states import SettingsStates
 
 router = Router(name="admin_main_menu")
 
@@ -55,15 +57,22 @@ async def admin_command(message: Message, state: FSMContext):
     await send_admin_menu(message, state)
 
 
-#handles "back" button presses — returns to main admin menu
-@router.message(F.text.in_(admin_button_values("btn_back")))
+#handles "back" button — returns to main admin menu
+#excluded during settings FSM states so the settings handler can catch it and go back to settings keyboard
+@router.message(
+    F.text.in_(admin_button_values("btn_back")),
+    ~StateFilter(
+        SettingsStates.waiting_for_new_admin_id,
+        SettingsStates.waiting_for_remove_admin_id,
+    ),
+)
 async def admin_back_button(message: Message, state: FSMContext):
     await send_admin_menu(message, state)
 
 
 #universal cancel for admins — catches cancel button in any FSM state including after restart
 #IsAdminFilter in the decorator ensures non-admins pass through to their own cancel handlers
-#StateFilter exclusion ensures admin cancel doesn't intercept user-level FSM flows (e.g. /sync)
+#StateFilter exclusions ensure this doesn't intercept user-level or settings-level FSM flows
 _CANCEL_BUTTON_TEXTS = admin_button_values("btn_cancel") + [
     "❌ Отменить",
 ]
@@ -77,6 +86,8 @@ from app.bot.sync_roaming_states import UserSyncRoamingStates
         UserSyncRoamingStates.waiting_for_roaming_id,
         UserSyncRoamingStates.waiting_for_inn,
         UserSyncRoamingStates.waiting_for_model_type,
+        SettingsStates.waiting_for_new_admin_id,
+        SettingsStates.waiting_for_remove_admin_id,
     ),
 )
 async def admin_cancel_any_state(message: Message, state: FSMContext):
@@ -103,12 +114,21 @@ async def admin_exit_button(message: Message, state: FSMContext):
     )
 
 
-#settings button handler — placeholder that shows admin menu with description
+#settings button handler — opens settings/admin management keyboard
 @router.message(F.text.in_(admin_button_values("btn_settings")), IsAdminFilter())
 async def admin_settings_button(message: Message):
     language = get_admin_language(message.from_user.id if message.from_user else None)
     await message.answer(
-        get_admin_text("admin_menu_title", language) + "\n\n"
-        "Q/A, временные проблемы, review cases и статистика",
-        reply_markup=admin_main_keyboard(language),
+        get_admin_text("settings_title", language),
+        reply_markup=settings_keyboard(language),
+    )
+
+
+#manage admins button — direct shortcut from main keyboard to settings/admin management keyboard
+@router.message(F.text.in_(admin_button_values("btn_manage_admins")), IsAdminFilter())
+async def admin_manage_admins_button(message: Message):
+    language = get_admin_language(message.from_user.id if message.from_user else None)
+    await message.answer(
+        get_admin_text("settings_title", language),
+        reply_markup=settings_keyboard(language),
     )

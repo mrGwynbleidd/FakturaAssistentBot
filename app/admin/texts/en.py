@@ -64,4 +64,21 @@ ADMIN_TEXTS_EN = {
     "operation_cancelled": "Operation cancelled.",
     "error_occurred": "An error occurred. Check the logs.",
 
+    # Settings / Admin management
+    "settings_title": "⚙️ Settings",
+    "btn_list_admins": "👥 Admin list",
+    "btn_add_admin": "➕ Add admin",
+    "btn_remove_admin": "➖ Remove admin",
+    "admin_list_title": "👥 Current admins:",
+    "admin_list_empty": "No file-based admins. Check ADMIN_IDS in config.",
+    "enter_admin_id": "Enter the Telegram ID of the new admin (digits only).\n\nTo find out an ID, send @userinfobot a message in Telegram.",
+    "admin_added": "✅ Admin added.",
+    "admin_already_exists": "⚠️ This user is already an admin.",
+    "enter_remove_admin_id": "Enter the Telegram ID of the admin to remove:",
+    "admin_removed": "✅ Admin removed.",
+    "admin_not_found": "❌ That Telegram ID was not found in the file.",
+    "admin_env_warning": "⚠️ Admins from ADMIN_IDS (config/env) cannot be removed via the bot.",
+    "invalid_admin_id": "❌ Invalid format. Enter a numeric Telegram ID.",
+    "btn_manage_admins": "👥 Manage admins",
+    "self_remove_error": "❌ You cannot remove yourself from the admin list.",
 }
